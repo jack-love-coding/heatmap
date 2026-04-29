@@ -1,4 +1,5 @@
 import type { EventImage, HistoricEvent, RelatedSong } from '@/data/ww2MusicAtlas'
+import { publicAssetPath } from '@/lib/publicAssets'
 
 type EventEnhancement = Pick<
   HistoricEvent,
@@ -6,10 +7,14 @@ type EventEnhancement = Pick<
 >
 
 function image(input: Omit<EventImage, 'generated'>): EventImage {
-  return { ...input, generated: false }
+  return { ...input, src: publicAssetPath(input.src), generated: false }
 }
 
 function song(input: RelatedSong): RelatedSong {
+  if (input.streamUrl) {
+    return { ...input, streamUrl: publicAssetPath(input.streamUrl) }
+  }
+
   return input
 }
 
