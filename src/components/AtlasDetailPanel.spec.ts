@@ -55,6 +55,8 @@ describe('AtlasDetailPanel', () => {
     })
 
     expect(wrapper.get('[data-testid="artist-panel"]').text()).toContain('Vera Lynn')
+    expect(wrapper.get('[data-testid="artist-representative-works"]').text()).toContain("We'll Meet Again")
+    expect(wrapper.get('[data-testid="linked-artist-cards"]').text()).toContain('Glenn Miller')
 
     await wrapper.get('[data-testid="tab-sources"]').trigger('click')
 

@@ -1,3 +1,5 @@
+import { publicAssetPath } from '@/lib/publicAssets'
+
 export type Language = 'zh' | 'en'
 export type AtlasMode = 'story' | 'explore'
 export type LayerKey = 'styles' | 'events' | 'influence'
@@ -149,12 +151,28 @@ export interface InfluenceArc {
   weight: number
 }
 
+export type ChapterEvidenceKind = 'historical-trigger' | 'music-mechanism' | 'audible-evidence'
+
+export interface ChapterEvidencePoint {
+  kind: ChapterEvidenceKind
+  labelZh: string
+  labelEn: string
+  titleZh: string
+  titleEn: string
+  bodyZh: string
+  bodyEn: string
+}
+
 export interface ChapterScene {
   id: string
   titleZh: string
   titleEn: string
   summaryZh: string
   summaryEn: string
+  detailZh: string
+  detailEn: string
+  evidencePoints: ChapterEvidencePoint[]
+  thumbnail: EventImage
   yearRange: [number, number]
   focusCountryIds: string[]
   focusEventIds: string[]
@@ -163,6 +181,18 @@ export interface ChapterScene {
 
 export const YEAR_MIN = 1931
 export const YEAR_MAX = 1949
+
+function generatedChapterImage(src: string, altZh: string, altEn: string): EventImage {
+  return {
+    src: publicAssetPath(src),
+    altZh,
+    altEn,
+    credit: 'Generated with OpenAI image generation for this project',
+    sourceUrl: `generated:imagegen:${src.replace(/^\/images\/generated\/|\.png$/g, '')}`,
+    licenseLabel: 'Generated project asset; not a historical photograph',
+    generated: true,
+  }
+}
 
 export const countries: CountryProfile[] = [
   { id: 'us', nameZh: '美国', nameEn: 'United States', lat: 38.9, lng: -77.0, region: 'North America', color: '#c98f58' },
@@ -676,6 +706,44 @@ export const chapterScenes: ChapterScene[] = [
     titleEn: 'Pre-war Cultural Tension',
     summaryZh: '都会流行、国家宣传与电台治理开始在不同国家拉开分野。',
     summaryEn: 'Urban pop, state messaging, and radio governance begin to diverge across countries.',
+    detailZh:
+      '这一阶段的重点不是全面战争已经爆发，而是“声音秩序”已经开始分裂：美国和英法仍以广播、舞厅、唱片和都市娱乐扩展大众流行，德国、日本和中国则更早感受到审查、殖民扩张和民族危机带来的压力。观众需要看到的是，同样是流行歌曲和电台节目，在不同国家已经被推向完全不同的用途：有的服务商业娱乐，有的被国家审批，有的开始转化为救亡和动员资源。',
+    detailEn:
+      'This chapter is not about total war already arriving; it is about the sound order beginning to split. The United States, Britain, and France still expanded popular music through radio, dance halls, records, and urban entertainment, while Germany, Japan, and China felt earlier pressure from censorship, imperial expansion, and national crisis. The key evidence is that the same media, song, broadcast, and performance, began serving sharply different purposes: entertainment, state approval, or survival-oriented mobilization.',
+    evidencePoints: [
+      {
+        kind: 'historical-trigger',
+        labelZh: '历史触发',
+        labelEn: 'Historical trigger',
+        titleZh: '东北亚危机与德国文化审批同时抬头',
+        titleEn: 'East Asian crisis and German cultural approval rise together',
+        bodyZh: '九一八事变和帝国文化院整编说明，战争尚未全面展开时，扩张、审查和职业准入已经开始改变音乐生产的边界。',
+        bodyEn: 'The Mukden Incident and Reich Chamber of Culture show that expansion, censorship, and professional admission were already changing the boundaries of music before full-scale war.',
+      },
+      {
+        kind: 'music-mechanism',
+        labelZh: '音乐机制',
+        labelEn: 'Musical mechanism',
+        titleZh: '广播和唱片从娱乐渠道变成治理对象',
+        titleEn: 'Radio and records become objects of governance',
+        bodyZh: '都市流行仍在发展，但电台、电影歌曲和唱片流通开始被国家、殖民行政和审查制度重新编码。',
+        bodyEn: 'Urban pop still developed, but radio, film songs, and record circulation were increasingly recoded by the state, colonial administration, and censorship.',
+      },
+      {
+        kind: 'audible-evidence',
+        labelZh: '可见/可听证据',
+        labelEn: 'Visible and audible evidence',
+        titleZh: '从魏玛舞台到中国救亡歌曲',
+        titleEn: 'From Weimar stage song to Chinese resistance song',
+        bodyZh: 'Kurt Weill、聂耳、周璇等人物把观众带到具体作品：歌舞厅、电影歌曲和群众歌曲正在形成不同证据链。',
+        bodyEn: 'Figures such as Kurt Weill, Nie Er, and Zhou Xuan anchor the chain in actual works: cabaret, film song, and mass song were forming different evidentiary trails.',
+      },
+    ],
+    thumbnail: generatedChapterImage(
+      '/images/generated/chapter-prewar-tension.png',
+      '战前文化张力章节的生成式档案缩略图',
+      'Generated archival thumbnail for the Pre-war Cultural Tension chapter',
+    ),
     yearRange: [1931, 1935],
     focusCountryIds: ['de', 'jp', 'cn'],
     focusEventIds: ['mukden-incident', 'reich-chamber'],
@@ -687,6 +755,44 @@ export const chapterScenes: ChapterScene[] = [
     titleEn: 'Expansion and Propaganda',
     summaryZh: '轴心国与东亚战线推动国策音乐、广播与仪式节奏同步化。',
     summaryEn: 'Axis politics and the East Asian front synchronize policy songs, broadcasting, and ceremonial rhythm.',
+    detailZh:
+      '1936-1940 年的证据链更直接：政治扩张把音乐推入宣传和仪式系统。罗马-柏林轴心让威权国家共享进行曲、群众集会、新闻影像和电台纪律的声音模板；全面侵华战争迫使中国音乐中心内迁，使抗战合唱和救亡歌曲成为公共动员工具；欧洲战争爆发后，英法德意的广播不再只是娱乐媒介，而成为组织恐惧、希望、纪律和士气的基础设施。',
+    detailEn:
+      'The evidence chain from 1936 to 1940 is more explicit: political expansion pushed music into propaganda and ceremony. The Rome-Berlin Axis aligned authoritarian templates of marches, rallies, newsreels, and disciplined radio; the full-scale Sino-Japanese War forced Chinese music centers inland and made resistance chorus a tool of public mobilization; once war broke out in Europe, broadcasting in Britain, France, Germany, and Italy became infrastructure for fear, hope, discipline, and morale rather than entertainment alone.',
+    evidencePoints: [
+      {
+        kind: 'historical-trigger',
+        labelZh: '历史触发',
+        labelEn: 'Historical trigger',
+        titleZh: '轴心整合、侵华战争与欧洲战争连成一条扩张线',
+        titleEn: 'Axis alignment, China war, and European war form one expansion line',
+        bodyZh: '罗马-柏林轴心、全面侵华战争和欧洲战争爆发把局部管制升级为跨区域的宣传、广播和仪式体系。',
+        bodyEn: 'The Rome-Berlin Axis, full-scale war in China, and war in Europe turn local control into regional systems of propaganda, broadcasting, and ceremony.',
+      },
+      {
+        kind: 'music-mechanism',
+        labelZh: '音乐机制',
+        labelEn: 'Musical mechanism',
+        titleZh: '进行曲、国策歌谣和抗战合唱占据前台',
+        titleEn: 'Marches, policy songs, and resistance chorus move forward',
+        bodyZh: '歌曲不再只是流行消费品，而被配置为政治口号、仪式节奏、募捐巡演和群众教育。',
+        bodyEn: 'Songs stop functioning only as consumer entertainment and become political slogans, ceremonial rhythm, fundraising tours, and collective education.',
+      },
+      {
+        kind: 'audible-evidence',
+        labelZh: '可见/可听证据',
+        labelEn: 'Visible and audible evidence',
+        titleZh: '事件图片、相关歌曲和国家风格阶段互相印证',
+        titleEn: 'Event images, songs, and country phases corroborate each other',
+        bodyZh: '事件详情中的轴心仪式、上海战事、欧洲战争和相关曲目，说明宣传节奏如何进入不同国家的音乐风格。',
+        bodyEn: 'The event imagery, Shanghai wartime disruption, European war context, and related songs show propaganda rhythm entering each country’s musical style.',
+      },
+    ],
+    thumbnail: generatedChapterImage(
+      '/images/generated/chapter-expansion-propaganda.png',
+      '扩张与宣传章节的生成式档案缩略图',
+      'Generated archival thumbnail for the Expansion and Propaganda chapter',
+    ),
     yearRange: [1936, 1940],
     focusCountryIds: ['de', 'it', 'jp', 'cn'],
     focusEventIds: ['rome-berlin-axis', 'second-sino-japanese-war', 'europe-war'],
@@ -698,6 +804,44 @@ export const chapterScenes: ChapterScene[] = [
     titleEn: 'Total War and Suppression',
     summaryZh: '前线歌曲、军队演出与广播系统成为动员与情绪管理的核心机制。',
     summaryEn: 'Front songs, troop entertainment, and broadcast systems become core engines of mobilization and emotional management.',
+    detailZh:
+      '1941-1943 年，音乐已经被总体战完全吸收。巴巴罗萨行动、珍珠港事件和斯大林格勒转折分别把苏德东线、美国参战和战争拐点连接起来。前线歌曲、大型合唱、军中娱乐、短波广播和宣传电影不只是背景声音，而是用来维持士气、划分敌我、组织牺牲叙事和管理家庭离别情绪的工具。',
+    detailEn:
+      'By 1941-1943, music had been fully absorbed by total war. Operation Barbarossa, Pearl Harbor, and Stalingrad connect the Eastern Front, U.S. entry, and the wartime turning point. Frontline songs, massed chorus, troop entertainment, shortwave broadcasting, and propaganda film were not background sound; they maintained morale, marked enemies, organized sacrifice narratives, and managed the emotional strain of separation.',
+    evidencePoints: [
+      {
+        kind: 'historical-trigger',
+        labelZh: '历史触发',
+        labelEn: 'Historical trigger',
+        titleZh: '东线、太平洋和全球盟军网络同时扩大',
+        titleEn: 'Eastern Front, Pacific war, and Allied networks expand together',
+        bodyZh: '巴巴罗萨、珍珠港和斯大林格勒让战争进入更高强度阶段，音乐传播也随军队、广播和电影体系扩张。',
+        bodyEn: 'Barbarossa, Pearl Harbor, and Stalingrad intensify the war, while musical circulation expands through armies, broadcasting, and film systems.',
+      },
+      {
+        kind: 'music-mechanism',
+        labelZh: '音乐机制',
+        labelEn: 'Musical mechanism',
+        titleZh: '士气音乐和压制性文化管制并行',
+        titleEn: 'Morale music and coercive cultural control run in parallel',
+        bodyZh: '同一时期既有盟军娱乐和苏联合唱动员，也有德国和日本对音乐空间的持续筛选与规训。',
+        bodyEn: 'The same period contains Allied entertainment and Soviet choral mobilization alongside continuing German and Japanese filtering and discipline of musical space.',
+      },
+      {
+        kind: 'audible-evidence',
+        labelZh: '可见/可听证据',
+        labelEn: 'Visible and audible evidence',
+        titleZh: 'V-Disc、前线歌曲和广播人物形成证据链',
+        titleEn: 'V-Discs, frontline songs, and radio figures form the evidence chain',
+        bodyZh: 'Andrews Sisters、Glenn Miller、Klavdiya Shulzhenko、Lale Andersen 等人物把宏观战局落到具体声音。',
+        bodyEn: 'The Andrews Sisters, Glenn Miller, Klavdiya Shulzhenko, Lale Andersen, and others turn the macro war into specific sounds.',
+      },
+    ],
+    thumbnail: generatedChapterImage(
+      '/images/generated/chapter-total-war.png',
+      '总体战与压制章节的生成式档案缩略图',
+      'Generated archival thumbnail for the Total War and Suppression chapter',
+    ),
     yearRange: [1941, 1943],
     focusCountryIds: ['us', 'uk', 'su', 'de', 'jp'],
     focusEventIds: ['barbarossa', 'pearl-harbor', 'stalingrad'],
@@ -709,6 +853,44 @@ export const chapterScenes: ChapterScene[] = [
     titleEn: 'Turning Points and Exchange',
     summaryZh: '盟军推进与城市解放，使跨国音乐流动重新打开。',
     summaryEn: 'Allied advances and liberated cities reopen channels of transnational musical exchange.',
+    detailZh:
+      '1944-1945 年的证据链从“封闭”转向“重新流动”。巴黎解放恢复了香颂、爵士俱乐部和夜生活，也把盟军爵士带回城市空间；德国投降使去纳粹化广播、文化重建和爵士回归成为新起点；日本投降则让占领军广播、俱乐部和电影歌曲迅速改写日本战后流行听觉。音乐在这里不只是庆祝胜利，也记录了占领、重建和跨国接触的重新开启。',
+    detailEn:
+      'The 1944-1945 chain turns from closure to renewed circulation. The Liberation of Paris reopened chanson, jazz clubs, and nightlife while bringing Allied jazz back into the city; German surrender created a starting point for denazified broadcasting, cultural reconstruction, and the return of jazz; Japan’s surrender allowed occupation radio, clubs, and film song to rapidly rewrite postwar listening. Music here is not only victory celebration; it records occupation, rebuilding, and reopened contact.',
+    evidencePoints: [
+      {
+        kind: 'historical-trigger',
+        labelZh: '历史触发',
+        labelEn: 'Historical trigger',
+        titleZh: '解放与投降改变文化流动方向',
+        titleEn: 'Liberation and surrender redirect cultural movement',
+        bodyZh: '巴黎解放、德国投降和日本投降把战时封闭的城市、广播和俱乐部网络重新接入盟军与占领秩序。',
+        bodyEn: 'Paris liberation, German surrender, and Japanese surrender reconnect wartime-restricted cities, broadcasts, and club networks to Allied and occupation systems.',
+      },
+      {
+        kind: 'music-mechanism',
+        labelZh: '音乐机制',
+        labelEn: 'Musical mechanism',
+        titleZh: '爵士、香颂和广播重建重新定义城市声音',
+        titleEn: 'Jazz, chanson, and rebuilt broadcasting redefine city sound',
+        bodyZh: '胜利并没有让音乐回到战前，而是把盟军流动、占领政策和本地记忆混合成新的城市声景。',
+        bodyEn: 'Victory does not restore prewar music; it mixes Allied circulation, occupation policy, and local memory into new urban soundscapes.',
+      },
+      {
+        kind: 'audible-evidence',
+        labelZh: '可见/可听证据',
+        labelEn: 'Visible and audible evidence',
+        titleZh: '巴黎、柏林、东京的声音转向互相对照',
+        titleEn: 'Paris, Berlin, and Tokyo provide contrasting turns',
+        bodyZh: 'Piaf、Django Reinhardt、Glenn Miller 和日本战后 boogie 线索，让观众看到同一胜利时刻的不同音乐后果。',
+        bodyEn: 'Piaf, Django Reinhardt, Glenn Miller, and Japan’s postwar boogie trail show different musical consequences of the same victory moment.',
+      },
+    ],
+    thumbnail: generatedChapterImage(
+      '/images/generated/chapter-turning-points.png',
+      '转折与交流章节的生成式档案缩略图',
+      'Generated archival thumbnail for the Turning Points and Exchange chapter',
+    ),
     yearRange: [1944, 1945],
     focusCountryIds: ['fr', 'us', 'uk', 'de', 'jp'],
     focusEventIds: ['liberation-paris', 'germany-surrender', 'japan-surrender'],
@@ -720,6 +902,44 @@ export const chapterScenes: ChapterScene[] = [
     titleEn: 'Post-war Reconstruction and Legacy',
     summaryZh: '战后广播、唱片与占领秩序重塑了新的全球流行音乐版图。',
     summaryEn: 'Postwar broadcasting, records, and occupation orders reshape a new global map of popular music.',
+    detailZh:
+      '1946-1949 年的重点是战后秩序如何把战时声音转化为长期遗产。马歇尔援助、唱片市场和广播现代化使西欧更快靠近美国流行工业；占领期日本把爵士、布吉和电影歌曲重新组织成都市娱乐；中国则把抗战时期形成的群众歌曲、合唱组织和电影歌曲经验纳入新的国家叙事。证据链的终点不是战争结束，而是战时传播机制如何成为战后流行音乐、公共广播和国家声音的基础。',
+    detailEn:
+      'The 1946-1949 focus is how the postwar order turns wartime sound into lasting legacy. Marshall Aid, record markets, and broadcast modernization pull Western Europe toward the U.S. popular industry; occupation Japan reorganizes jazz, boogie, and film song into urban entertainment; China folds wartime mass song, choral organization, and film-song experience into a new state narrative. The chain does not end with the war; it shows wartime circulation becoming the basis for postwar popular music, public broadcasting, and state sound.',
+    evidencePoints: [
+      {
+        kind: 'historical-trigger',
+        labelZh: '历史触发',
+        labelEn: 'Historical trigger',
+        titleZh: '援助、占领和建国共同塑造新秩序',
+        titleEn: 'Aid, occupation, and state founding shape the new order',
+        bodyZh: '马歇尔援助、占领广播和中华人民共和国成立把战后音乐问题放进经济、军事和国家制度框架。',
+        bodyEn: 'Marshall Aid, occupation broadcasting, and the founding of the PRC place postwar music inside economic, military, and state frameworks.',
+      },
+      {
+        kind: 'music-mechanism',
+        labelZh: '音乐机制',
+        labelEn: 'Musical mechanism',
+        titleZh: '唱片工业、公共广播和国家叙事接管战时遗产',
+        titleEn: 'Records, public broadcasting, and state narrative inherit wartime systems',
+        bodyZh: '战时的传播网络没有消失，而是被唱片公司、电台、占领机构和新国家制度重新配置。',
+        bodyEn: 'Wartime circulation networks do not disappear; record companies, broadcasters, occupation authorities, and new state systems reconfigure them.',
+      },
+      {
+        kind: 'audible-evidence',
+        labelZh: '可见/可听证据',
+        labelEn: 'Visible and audible evidence',
+        titleZh: '从 Nat King Cole 到《义勇军进行曲》',
+        titleEn: 'From Nat King Cole to March of the Volunteers',
+        bodyZh: '美国流行唱片、西欧广播现代化、日本 boogie 和中国群众歌曲共同说明，战后流行版图是战时声音机制的延续。',
+        bodyEn: 'U.S. popular records, Western European broadcast modernization, Japanese boogie, and Chinese mass song together show the postwar map continuing wartime sound systems.',
+      },
+    ],
+    thumbnail: generatedChapterImage(
+      '/images/generated/chapter-reconstruction.png',
+      '战后重建与遗产章节的生成式档案缩略图',
+      'Generated archival thumbnail for the Post-war Reconstruction and Legacy chapter',
+    ),
     yearRange: [1946, 1949],
     focusCountryIds: ['us', 'fr', 'jp', 'cn', 'uk'],
     focusEventIds: ['marshall-broadcast', 'prc-founding'],

@@ -12,6 +12,7 @@ describe('useAtlasState', () => {
       query: {
         year: 2999,
         event: 'pearl-harbor',
+        artist: 'glenn-miller',
         countries: 'us,jp,cn',
         lang: 'en',
       },
@@ -20,6 +21,7 @@ describe('useAtlasState', () => {
 
     expect(atlas.activeYear.value).toBe(1949)
     expect(atlas.activeEvent.value?.id).toBe('pearl-harbor')
+    expect(atlas.activeArtist.value?.id).toBe('glenn-miller')
     expect(atlas.selectedCountryIds.value).toEqual(['us', 'jp'])
     expect(atlas.language.value).toBe('en')
   })

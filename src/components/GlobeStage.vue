@@ -3,11 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Globe from 'globe.gl'
 import * as THREE from 'three'
 import type { Feature } from 'geojson'
-import { getArtistName, getArtistNote } from '@/data/atlasMarkers'
+import { getArtistName, getArtistNote, getArtistRole, type ArtistWork } from '@/data/atlasMarkers'
 import type { CountryProfile, GlobeFocus, HistoricEvent, Language, LayerKey } from '@/data/ww2MusicAtlas'
 import { artistMarkers, getActiveStylePhase, getCountryName, getEventTitle, getStyleName, getVisibleInfluenceArcs, influenceArcs, stylePhases } from '@/lib/atlas'
 import { getEventCategoryConfig, getEventCategoryLabel, type EventCategory } from '@/lib/eventIcons'
 import { createEarthTexture, getFeatureForCountry, getWorldCountryFeatures } from '@/lib/globeGeo'
+import { publicAssetPath } from '@/lib/publicAssets'
 import { getStylePaletteLabel, resolveStylePalette } from '@/lib/stylePalette'
 
 interface GlobePin {
@@ -26,6 +27,10 @@ interface GlobePin {
   importance?: number
   eventId?: string
   isSelected?: boolean
+  role?: string
+  portraitSrc?: string
+  portraitAlt?: string
+  works?: ArtistWork[]
 }
 
 const props = defineProps<{
@@ -48,6 +53,8 @@ const emit = defineEmits<{
 const container = ref<HTMLDivElement | null>(null)
 const fallback = ref(false)
 const worldFeatures = getWorldCountryFeatures()
+const eventPinSrc = publicAssetPath('/images/generated/ww2-event-pin.png')
+const artistPinSrc = publicAssetPath('/images/generated/ww2-artist-pin.png')
 
 let globe: any = null
 let resizeObserver: ResizeObserver | null = null
@@ -111,6 +118,10 @@ const globePins = computed<GlobePin[]>(() => {
       subtitle: getArtistNote(artist, props.language),
       color: palette.color,
       isSelected: props.selectedArtistId === artist.id,
+      role: getArtistRole(artist, props.language),
+      portraitSrc: artist.portrait.src,
+      portraitAlt: props.language === 'zh' ? artist.portrait.altZh : artist.portrait.altEn,
+      works: artist.representativeWorks,
     }
   })
 
@@ -282,6 +293,8 @@ function createMarkerElement(pin: GlobePin) {
   const subtitle = escapeHtml(pin.subtitle)
   const categoryLabel = escapeHtml(pin.categoryLabel ?? '')
   const glow = pin.glow ?? 'rgba(201, 143, 88, 0.22)'
+  const role = escapeHtml(pin.role ?? '')
+  const works = pin.works?.slice(0, 2) ?? []
 
   element.type = 'button'
   element.className = `globe-pin globe-pin--${pin.type}`
@@ -300,9 +313,8 @@ function createMarkerElement(pin: GlobePin) {
       <span class="globe-pin__pulse"></span>
       <span class="globe-pin__stem"></span>
       <span class="event-badge" data-importance="${pin.importance ?? 1}">
-        <span class="event-badge__ring"></span>
-        <span class="event-badge__glyph event-badge__glyph--${pin.iconClass}">
-          <i></i><i></i><i></i>
+        <span class="event-badge__ring">
+          <img src="${escapeHtml(eventPinSrc)}" alt="" loading="lazy">
         </span>
       </span>
       <span class="event-badge__year">${subtitle}</span>
@@ -313,10 +325,23 @@ function createMarkerElement(pin: GlobePin) {
     `
     : `
       <span class="globe-pin__stem"></span>
-      <span class="globe-pin__head"></span>
-      <span class="globe-pin__label">
-        <strong>${title}</strong>
-        <small>${subtitle}</small>
+      <span class="globe-pin__head">
+        <img src="${escapeHtml(artistPinSrc)}" alt="" loading="lazy">
+      </span>
+      <span class="globe-pin__label globe-pin__label--artist-card">
+        ${pin.portraitSrc ? `<img src="${escapeHtml(pin.portraitSrc)}" alt="${escapeHtml(pin.portraitAlt ?? '')}" loading="lazy">` : ''}
+        <span class="artist-card-copy">
+          <strong>${title}</strong>
+          <small>${subtitle}</small>
+          ${role ? `<em>${role}</em>` : ''}
+          ${
+            works.length
+              ? `<span class="artist-card-works">${works
+                  .map((work) => `<b>${escapeHtml(work.title)}</b><i>${escapeHtml(work.year)}</i>`)
+                  .join('')}</span>`
+              : ''
+          }
+        </span>
       </span>
     `
 
@@ -655,11 +680,20 @@ onBeforeUnmount(() => {
 }
 
 :global(.globe-pin__head) {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--pin-color);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--pin-color) 14%, transparent);
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.65rem;
+  background: transparent;
+  filter:
+    drop-shadow(0 0 0.25rem color-mix(in srgb, var(--pin-color) 38%, transparent))
+    drop-shadow(0 0.18rem 0.22rem rgba(0, 0, 0, 0.48));
+}
+
+:global(.globe-pin__head img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 :global(.globe-pin__pulse) {
@@ -687,32 +721,37 @@ onBeforeUnmount(() => {
   position: relative;
   display: grid;
   place-items: center;
-  width: 2.35rem;
-  height: 2.35rem;
+  width: 2.05rem;
+  height: 3.15rem;
   color: #fff4db;
 }
 
 :global(.event-badge[data-importance='2']) {
-  width: 2.55rem;
-  height: 2.55rem;
+  width: 2.25rem;
+  height: 3.45rem;
 }
 
 :global(.event-badge[data-importance='3']) {
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.45rem;
+  height: 3.75rem;
 }
 
 :global(.event-badge__ring) {
   position: absolute;
   inset: 0;
-  border-radius: 999px;
-  background:
-    radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.72), transparent 0.28rem),
-    radial-gradient(circle at center, color-mix(in srgb, var(--pin-color) 72%, #fff) 0, var(--pin-color) 44%, rgba(8, 13, 18, 0.86) 68%);
-  border: 1px solid color-mix(in srgb, var(--pin-color) 72%, #fff);
-  box-shadow:
-    0 0 0 0.38rem var(--pin-glow),
-    inset 0 0 0 1px rgba(255, 244, 219, 0.18);
+  display: grid;
+  place-items: center;
+  background: transparent;
+  filter:
+    drop-shadow(0 0 0.28rem var(--pin-glow))
+    drop-shadow(0 0.24rem 0.28rem rgba(0, 0, 0, 0.48));
+}
+
+:global(.event-badge__ring img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: sepia(0.24) saturate(0.9) contrast(1.08);
 }
 
 :global(.event-badge__glyph) {
@@ -914,9 +953,9 @@ onBeforeUnmount(() => {
 }
 
 :global(.globe-pin--selected .globe-pin__head) {
-  box-shadow:
-    0 0 0 5px color-mix(in srgb, var(--pin-color) 16%, transparent),
-    0 0 0 10px color-mix(in srgb, var(--pin-color) 10%, transparent);
+  filter:
+    drop-shadow(0 0 0.34rem color-mix(in srgb, var(--pin-color) 70%, transparent))
+    drop-shadow(0 0 0.72rem color-mix(in srgb, var(--pin-color) 44%, transparent));
 }
 
 :global(.globe-pin__label strong) {
@@ -927,6 +966,63 @@ onBeforeUnmount(() => {
   color: rgba(243, 231, 212, 0.68);
   font-size: 0.65rem;
   line-height: 1.25;
+}
+
+:global(.globe-pin__label--artist-card) {
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 0.55rem;
+  width: 17rem;
+  max-width: 17rem;
+  padding: 0.55rem;
+  text-align: left;
+  transform: translateY(6px) translateX(0.5rem);
+}
+
+:global(.globe-pin__label--artist-card img) {
+  width: 4rem;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid rgba(239, 228, 208, 0.16);
+}
+
+:global(.artist-card-copy) {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+:global(.artist-card-copy strong),
+:global(.artist-card-copy small),
+:global(.artist-card-copy em) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:global(.artist-card-copy em) {
+  color: rgba(243, 231, 212, 0.74);
+  font-size: 0.64rem;
+  font-style: normal;
+  line-height: 1.3;
+}
+
+:global(.artist-card-works) {
+  display: grid;
+  gap: 0.2rem;
+  margin-top: 0.1rem;
+}
+
+:global(.artist-card-works b) {
+  color: #f4d39f;
+  font-size: 0.65rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+:global(.artist-card-works i) {
+  margin-left: 0.35rem;
+  color: rgba(243, 231, 212, 0.54);
+  font-size: 0.6rem;
+  font-style: normal;
 }
 
 @keyframes event-pulse {
@@ -960,8 +1056,8 @@ onBeforeUnmount(() => {
   }
 
   :global(.event-badge) {
-    width: 2rem;
-    height: 2rem;
+    width: 1.78rem;
+    height: 2.74rem;
   }
 
   :global(.event-badge__year) {

@@ -298,6 +298,7 @@ export function useAtlasState() {
     historicEvents,
     isPlaying,
     language,
+    selectedArtistId,
     selectedCountryIds,
     selectedCountries,
     selectedEventId,

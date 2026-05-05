@@ -2,7 +2,7 @@
 import { defineAsyncComponent } from 'vue'
 import { navigateTo } from '@/router'
 import { useAtlasState } from '@/composables/useAtlasState'
-import { getCountryName, getEventTitle } from '@/lib/atlas'
+import { getArtistRole, getCountryName, getEventTitle, getFeaturedArtistsForContext } from '@/lib/atlas'
 import type { HistoricEvent, RelatedSong } from '@/data/ww2MusicAtlas'
 
 const GlobeStage = defineAsyncComponent(() => import('@/components/GlobeStage.vue'))
@@ -40,6 +40,15 @@ function getEventImageAlt(event: HistoricEvent) {
 
 function getSongNote(song: RelatedSong) {
   return atlas.language.value === 'zh' ? song.noteZh : song.noteEn
+}
+
+function getLinkedArtists() {
+  return getFeaturedArtistsForContext({
+    activeEvent: atlas.activeEvent.value,
+    countryDetails: atlas.countryDetails.value,
+    activeYear: atlas.activeYear.value,
+    limit: 6,
+  })
 }
 </script>
 
@@ -113,6 +122,19 @@ function getSongNote(song: RelatedSong) {
               <a :href="song.sourceUrl" target="_blank" rel="noreferrer">
                 {{ atlas.language.value === 'zh' ? '打开歌曲来源' : 'Open song source' }}
               </a>
+            </article>
+          </div>
+        </section>
+        <section v-if="getLinkedArtists().length" class="detail-section" data-testid="event-linked-artists">
+          <p class="kicker">{{ atlas.language.value === 'zh' ? '相关音乐家' : 'Linked Artists' }}</p>
+          <div class="linked-artist-grid">
+            <article v-for="artist in getLinkedArtists()" :key="artist.id" class="linked-artist-card">
+              <img :src="artist.portrait.src" :alt="atlas.language.value === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
+              <div>
+                <h3>{{ atlas.language.value === 'zh' ? artist.nameZh : artist.nameEn }}</h3>
+                <p>{{ getArtistRole(artist, atlas.language.value) }}</p>
+                <small>{{ artist.representativeWorks.slice(0, 2).map((work) => work.title).join(' / ') }}</small>
+              </div>
             </article>
           </div>
         </section>
@@ -228,6 +250,38 @@ p {
   border: 1px solid rgba(239, 228, 208, 0.1);
 }
 
+.linked-artist-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.linked-artist-card {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(239, 228, 208, 0.1);
+}
+
+.linked-artist-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
+.linked-artist-card h3 {
+  margin: 0;
+  color: var(--atlas-text);
+  font-size: 1rem;
+}
+
+.linked-artist-card small {
+  color: #f0cf9f;
+  overflow-wrap: anywhere;
+}
+
 .song-card h3 {
   margin: 0;
   color: var(--atlas-text);
@@ -322,6 +376,10 @@ p {
   }
 
   .song-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .linked-artist-grid {
     grid-template-columns: 1fr;
   }
 }

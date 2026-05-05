@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { navigateTo } from '@/router'
 import { useAtlasState } from '@/composables/useAtlasState'
-import { getCountryName, getStyleName, getStyleSummary } from '@/lib/atlas'
+import { getArtistRole, getArtistsForPhase, getCountryName, getStyleName, getStyleSummary } from '@/lib/atlas'
 
 const atlas = useAtlasState()
 
@@ -15,6 +15,10 @@ function openSources() {
       lang: atlas.language.value,
     },
   })
+}
+
+function getPhaseArtists(countryId: string, startYear: number) {
+  return getArtistsForPhase(countryId, startYear)
 }
 </script>
 
@@ -72,6 +76,18 @@ function openSources() {
             <section>
               <h3>{{ atlas.language.value === 'zh' ? '代表作品' : 'Representative Works' }}</h3>
               <p>{{ item.phase.representativeWorks.join(' / ') }}</p>
+            </section>
+            <section v-if="getPhaseArtists(item.country.id, item.phase.startYear).length">
+              <h3>{{ atlas.language.value === 'zh' ? '关联音乐家' : 'Linked Artists' }}</h3>
+              <div class="country-artist-list">
+                <article v-for="artist in getPhaseArtists(item.country.id, item.phase.startYear)" :key="artist.id">
+                  <img :src="artist.portrait.src" :alt="atlas.language.value === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
+                  <span>
+                    <strong>{{ atlas.language.value === 'zh' ? artist.nameZh : artist.nameEn }}</strong>
+                    <small>{{ getArtistRole(artist, atlas.language.value) }}</small>
+                  </span>
+                </article>
+              </div>
             </section>
           </div>
         </template>
@@ -216,6 +232,43 @@ p {
   gap: 0.35rem;
   padding-top: 0.85rem;
   border-top: 1px solid rgba(239, 228, 208, 0.08);
+}
+
+.country-artist-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.country-artist-list article {
+  display: grid;
+  grid-template-columns: 3.4rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(239, 228, 208, 0.08);
+}
+
+.country-artist-list img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+
+.country-artist-list span {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.country-artist-list strong {
+  color: var(--atlas-text);
+  overflow-wrap: anywhere;
+}
+
+.country-artist-list small {
+  color: var(--atlas-muted);
+  line-height: 1.4;
 }
 
 .sources-cta {

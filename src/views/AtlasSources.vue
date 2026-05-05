@@ -70,6 +70,15 @@ function clipNote(clip: AudioClip) {
             <p>{{ clipNote(clip) }}</p>
           </a>
         </div>
+
+        <div v-if="group.relatedSongs.length" class="record-grid">
+          <a v-for="song in group.relatedSongs" :key="`${song.title}-${song.year}`" class="record-card audio" :href="song.sourceUrl" target="_blank" rel="noreferrer">
+            <span>{{ song.streamUrl ? (atlas.language.value === 'zh' ? '可播放作品' : 'Playable work') : atlas.language.value === 'zh' ? '作品资料' : 'Work source' }}</span>
+            <strong>{{ song.title }}</strong>
+            <small>{{ song.performer }} · {{ song.year }}</small>
+            <p>{{ atlas.language.value === 'zh' ? song.noteZh : song.noteEn }}</p>
+          </a>
+        </div>
       </article>
 
       <article v-for="section in bibliography" :key="section.id" class="source-group bibliography" data-testid="bibliography-dialog">

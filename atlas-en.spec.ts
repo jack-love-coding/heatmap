@@ -25,6 +25,26 @@ test('home event cards open the events page with synced detail', async ({ page }
   await expect(page.getByTestId('event-detail')).toContainText('1931')
 })
 
+test('home opens chapter evidence modal and syncs chapter changes', async ({ page }) => {
+  await page.goto('/')
+  await switchToEnglish(page)
+
+  await expect(page.getByTestId('home-connection-chain')).toContainText('Historical trigger')
+  await page.getByTestId('open-evidence-modal').click()
+
+  await expect(page.getByTestId('evidence-modal')).toContainText('Pre-war Cultural Tension')
+  await expect(page.getByTestId('evidence-modal')).toContainText('sound order beginning to split')
+  await expect(page.getByTestId('evidence-modal')).toContainText('Mukden Incident')
+
+  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: /Expansion and Propaganda/ }).click()
+  await page.getByTestId('open-evidence-modal').click()
+
+  await expect(page.getByTestId('evidence-modal')).toContainText('Expansion and Propaganda')
+  await expect(page.getByTestId('evidence-modal')).toContainText('political expansion pushed music into propaganda and ceremony')
+  await expect(page.getByTestId('evidence-modal')).toContainText('Rome-Berlin Axis')
+})
+
 test('events page links selected countries into the compare page', async ({ page }) => {
   await page.goto('/events?event=pearl-harbor&lang=en')
 

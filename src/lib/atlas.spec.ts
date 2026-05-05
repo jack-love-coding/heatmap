@@ -3,6 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildDetailSourceGroups,
+  artistMarkers,
+  chapterScenes,
   collectCountryAudioCoverage,
   collectMediaCoverage,
   getActiveStylePhase,
@@ -18,6 +20,7 @@ import {
   stylePhases,
   toggleCountrySelection,
   validateCatalogEntries,
+  validateArtistDossiers,
 } from '@/lib/atlas'
 import { resolveStylePalette } from '@/lib/stylePalette'
 
@@ -130,6 +133,24 @@ describe('atlas helpers', () => {
     expect(catalog.audioMissingRights).toEqual([])
   })
 
+  it('validates artist dossier coverage, works, links, and image assets', () => {
+    const issues = validateArtistDossiers()
+    const countsByCountry = artistMarkers.reduce<Record<string, number>>((counts, artist) => {
+      counts[artist.countryId] = (counts[artist.countryId] ?? 0) + 1
+      return counts
+    }, {})
+
+    expect(artistMarkers).toHaveLength(24)
+    expect(Object.values(countsByCountry).every((count) => count >= 3)).toBe(true)
+    expect(issues).toEqual([])
+    expect(
+      artistMarkers.every((artist) => {
+        const imagePath = artist.portrait.src.replace(/^\//, '')
+        return existsSync(join(process.cwd(), 'public', imagePath))
+      }),
+    ).toBe(true)
+  })
+
   it('validates enhanced historic event storytelling assets', () => {
     expect(
       historicEvents.every((event) => {
@@ -149,6 +170,39 @@ describe('atlas helpers', () => {
             event.image.credit &&
             event.image.sourceUrl &&
             event.image.licenseLabel &&
+            imagePath &&
+            existsSync(join(process.cwd(), 'public', imagePath)),
+        )
+      }),
+    ).toBe(true)
+  })
+
+  it('validates chapter evidence copy and generated thumbnail assets', () => {
+    expect(chapterScenes).toHaveLength(5)
+    expect(
+      chapterScenes.every((chapter) => {
+        const imagePath = chapter.thumbnail.src.replace(/^\//, '')
+
+        return Boolean(
+          chapter.detailZh.trim() &&
+            chapter.detailEn.trim() &&
+            chapter.evidencePoints.length === 3 &&
+            chapter.evidencePoints.every(
+              (point) =>
+                point.kind &&
+                point.labelZh &&
+                point.labelEn &&
+                point.titleZh &&
+                point.titleEn &&
+                point.bodyZh &&
+                point.bodyEn,
+            ) &&
+            chapter.thumbnail.generated &&
+            chapter.thumbnail.altZh &&
+            chapter.thumbnail.altEn &&
+            chapter.thumbnail.credit &&
+            chapter.thumbnail.sourceUrl &&
+            chapter.thumbnail.licenseLabel &&
             imagePath &&
             existsSync(join(process.cwd(), 'public', imagePath)),
         )

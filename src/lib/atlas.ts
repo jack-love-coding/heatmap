@@ -1,4 +1,4 @@
-import { artistMarkers as rawArtistMarkers, type ArtistMarker } from '@/data/atlasMarkers'
+import { artistMarkers as rawArtistMarkers, type ArtistMarker, type ArtistWork } from '@/data/atlasMarkers'
 import {
   artistMediaById,
   audioClips,
@@ -44,6 +44,11 @@ export interface DetailSourceGroup {
   hasPlayableAudio: boolean
 }
 
+export interface ArtistDossierValidationIssue {
+  artistId: string
+  field: string
+}
+
 export interface CountryAudioCoverage {
   countryId: string
   audioClipIds: string[]
@@ -66,7 +71,12 @@ export const historicEvents: HistoricEvent[] = rawHistoricEvents.map((event) => 
 
 export const artistMarkers: ArtistMarker[] = rawArtistMarkers.map((artist) => {
   const media = artistMediaById[artist.id] ?? {}
-  return { ...artist, ...media }
+  return {
+    ...artist,
+    ...media,
+    sourceIds: Array.from(new Set([...(artist.sourceIds ?? []), ...(media.sourceIds ?? [])])),
+    audioClipIds: Array.from(new Set([...(artist.audioClipIds ?? []), ...(media.audioClipIds ?? [])])),
+  }
 })
 
 export function getCountryName(country: CountryProfile, language: Language) {
@@ -148,6 +158,76 @@ export function getArtistById(artistId: string | null) {
   return artistMarkers.find((artist) => artist.id === artistId) ?? null
 }
 
+export function getPhaseKey(countryId: string, startYear: number) {
+  return getPhaseReferenceKey(countryId, startYear)
+}
+
+export function getArtistRole(artist: ArtistMarker, language: Language) {
+  return language === 'zh' ? artist.countryRoleZh : artist.countryRoleEn
+}
+
+export function getArtistWorkNote(work: ArtistWork, language: Language) {
+  return language === 'zh' ? work.noteZh : work.noteEn
+}
+
+export function getArtistsForEvent(eventId: string | null) {
+  if (!eventId) {
+    return []
+  }
+
+  return artistMarkers.filter((artist) => artist.linkedEventIds.includes(eventId))
+}
+
+export function getArtistsForPhase(countryId: string, startYear: number) {
+  const phaseKey = getPhaseKey(countryId, startYear)
+  return artistMarkers.filter((artist) => artist.linkedPhaseKeys.includes(phaseKey))
+}
+
+export function getArtistsForCountryYear(countryId: string, year: number) {
+  return artistMarkers.filter((artist) => {
+    const activeByYear = year >= artist.startYear && year <= artist.endYear
+    const activeByPhase = stylePhases.some((phase) => {
+      return (
+        phase.countryId === countryId &&
+        year >= phase.startYear &&
+        year <= phase.endYear &&
+        artist.linkedPhaseKeys.includes(getPhaseKey(countryId, phase.startYear))
+      )
+    })
+
+    return artist.countryId === countryId && (activeByYear || activeByPhase)
+  })
+}
+
+export function getFeaturedArtistsForContext(input: {
+  activeEvent: HistoricEvent | null
+  countryDetails: CountryDetail[]
+  activeYear: number
+  limit?: number
+}) {
+  const seen = new Set<string>()
+  const artists: ArtistMarker[] = []
+
+  const push = (items: ArtistMarker[]) => {
+    items.forEach((artist) => {
+      if (!seen.has(artist.id)) {
+        seen.add(artist.id)
+        artists.push(artist)
+      }
+    })
+  }
+
+  push(getArtistsForEvent(input.activeEvent?.id ?? null))
+  input.countryDetails.forEach((detail) => {
+    if (detail.phase) {
+      push(getArtistsForPhase(detail.country.id, detail.phase.startYear))
+    }
+    push(getArtistsForCountryYear(detail.country.id, input.activeYear))
+  })
+
+  return artists.slice(0, input.limit ?? 6)
+}
+
 export function getSourceReferencesByIds(sourceIds: string[] = []) {
   const seen = new Set<string>()
   return sourceIds.flatMap((sourceId) => {
@@ -222,6 +302,42 @@ export function validateCatalogEntries() {
   }
 }
 
+export function validateArtistDossiers() {
+  const issues: ArtistDossierValidationIssue[] = []
+  const countryCounts = new Map<string, number>()
+  const sourceIds = new Set(sourceReferences.map((source) => source.id))
+  const eventIds = new Set(historicEvents.map((event) => event.id))
+  const phaseKeys = new Set(stylePhases.map((phase) => getPhaseKey(phase.countryId, phase.startYear)))
+
+  artistMarkers.forEach((artist) => {
+    countryCounts.set(artist.countryId, (countryCounts.get(artist.countryId) ?? 0) + 1)
+
+    if (artist.representativeWorks.length < 1) {
+      issues.push({ artistId: artist.id, field: 'representativeWorks' })
+    }
+    if (!artist.portrait.src || !artist.portrait.altZh || !artist.portrait.altEn || !artist.portrait.credit || !artist.portrait.sourceUrl || !artist.portrait.licenseLabel) {
+      issues.push({ artistId: artist.id, field: 'portrait' })
+    }
+    if (!artist.sourceIds?.some((sourceId) => sourceIds.has(sourceId))) {
+      issues.push({ artistId: artist.id, field: 'sourceIds' })
+    }
+    if (!artist.linkedEventIds.every((eventId) => eventIds.has(eventId))) {
+      issues.push({ artistId: artist.id, field: 'linkedEventIds' })
+    }
+    if (!artist.linkedPhaseKeys.every((phaseKey) => phaseKeys.has(phaseKey))) {
+      issues.push({ artistId: artist.id, field: 'linkedPhaseKeys' })
+    }
+  })
+
+  countries.forEach((country) => {
+    if ((countryCounts.get(country.id) ?? 0) < 3) {
+      issues.push({ artistId: country.id, field: 'countryCoverage' })
+    }
+  })
+
+  return issues
+}
+
 export function collectMediaCoverage() {
   return {
     phases: stylePhases.map((phase) => ({
@@ -285,6 +401,10 @@ export function buildDetailSourceGroups(input: {
       summaryEn: input.activeArtist.summaryEn,
       sourceIds: input.activeArtist.sourceIds,
       audioClipIds: input.activeArtist.audioClipIds,
+      relatedSongs: input.activeArtist.representativeWorks.map((work) => ({
+        ...work,
+        performer: input.activeArtist!.nameEn,
+      })),
     })
 
     if (artistGroup) {

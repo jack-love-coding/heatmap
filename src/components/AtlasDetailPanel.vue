@@ -4,6 +4,9 @@ import type { ArtistMarker } from '@/data/atlasMarkers'
 import type { AudioClip, ChapterScene, HistoricEvent, Language, RelatedSong, SourceReference, StylePhase } from '@/data/ww2MusicAtlas'
 import {
   getBibliographySections,
+  getArtistRole,
+  getArtistWorkNote,
+  getFeaturedArtistsForContext,
   getChapterSummary,
   getChapterTitle,
   getCountryName,
@@ -32,6 +35,14 @@ const audioFailures = ref<string[]>([])
 
 const bibliography = computed(() => getBibliographySections())
 const hasSources = computed(() => props.sourceGroups.length > 0)
+const linkedArtists = computed(() =>
+  getFeaturedArtistsForContext({
+    activeEvent: props.activeEvent,
+    countryDetails: props.countryDetails,
+    activeYear: props.activeYear,
+    limit: 6,
+  }),
+)
 
 const activePaletteKeys = computed(() => {
   return new Set(
@@ -123,6 +134,16 @@ function getSongNote(song: RelatedSong) {
 
 function getSongKey(song: RelatedSong) {
   return `${song.title}:${song.year}`
+}
+
+function getWorkStatus(work: { streamUrl?: string }) {
+  return work.streamUrl
+    ? props.language === 'zh'
+      ? '可播放'
+      : 'Playable'
+    : props.language === 'zh'
+      ? '资料链接'
+      : 'Source link'
 }
 
 function getSongStatus(song: RelatedSong) {
@@ -248,20 +269,42 @@ function handleSourceAudioStop(clipId: string) {
     >
       <div v-if="activeArtist" class="panel-block artist-block" data-testid="artist-panel">
         <div class="section-chip section-chip--artist">
-          {{ language === 'zh' ? '艺术家地图钉' : 'Artist pin' }}
+          {{ language === 'zh' ? '音乐家资料卡' : 'Artist dossier' }}
         </div>
-        <h2 class="chapter-title">{{ language === 'zh' ? activeArtist.nameZh : activeArtist.nameEn }}</h2>
-        <p class="chapter-summary">
-          {{
-            language === 'zh'
-              ? activeArtist.summaryZh ?? activeArtist.noteZh
-              : activeArtist.summaryEn ?? activeArtist.noteEn
-          }}
-        </p>
+        <div class="artist-profile-head">
+          <img :src="activeArtist.portrait.src" :alt="language === 'zh' ? activeArtist.portrait.altZh : activeArtist.portrait.altEn">
+          <div>
+            <h2 class="chapter-title">{{ language === 'zh' ? activeArtist.nameZh : activeArtist.nameEn }}</h2>
+            <p class="chapter-summary">
+              {{
+                language === 'zh'
+                  ? activeArtist.summaryZh ?? activeArtist.noteZh
+                  : activeArtist.summaryEn ?? activeArtist.noteEn
+              }}
+            </p>
+          </div>
+        </div>
+        <p class="artist-role">{{ getArtistRole(activeArtist, language) }}</p>
         <p class="artist-meta">
           <span>{{ activeYear }}</span>
           <span>{{ activeArtist.startYear }}-{{ activeArtist.endYear }}</span>
+          <span>{{ activeArtist.portrait.generated ? (language === 'zh' ? '生成式资料图' : 'Generated image') : activeArtist.portrait.licenseLabel }}</span>
         </p>
+        <div class="work-list" data-testid="artist-representative-works">
+          <p class="list-title">{{ language === 'zh' ? '代表作' : 'Representative works' }}</p>
+          <article v-for="work in activeArtist.representativeWorks" :key="`${work.title}-${work.year}`" class="work-card">
+            <div class="card-meta">
+              <span class="meta-pill primary">{{ getWorkStatus(work) }}</span>
+              <span>{{ work.year }}</span>
+            </div>
+            <h4>{{ work.title }}</h4>
+            <p>{{ getArtistWorkNote(work, language) }}</p>
+            <audio v-if="work.streamUrl" class="audio-player" controls preload="none" :src="work.streamUrl" />
+            <a class="card-link" :href="work.sourceUrl" target="_blank" rel="noreferrer">
+              {{ language === 'zh' ? '打开作品来源' : 'Open work source' }}
+            </a>
+          </article>
+        </div>
       </div>
 
       <div class="panel-block">
@@ -313,6 +356,17 @@ function handleSourceAudioStop(clipId: string) {
             </a>
           </article>
         </div>
+        <div v-if="linkedArtists.length" class="linked-artist-list" data-testid="linked-artist-cards">
+          <p class="list-title">{{ language === 'zh' ? '相关音乐家' : 'Linked artists' }}</p>
+          <article v-for="artist in linkedArtists" :key="artist.id" class="mini-artist-card">
+            <img :src="artist.portrait.src" :alt="language === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
+            <div>
+              <h4>{{ language === 'zh' ? artist.nameZh : artist.nameEn }}</h4>
+              <p>{{ getArtistRole(artist, language) }}</p>
+              <small>{{ artist.representativeWorks.slice(0, 2).map((work) => work.title).join(' / ') }}</small>
+            </div>
+          </article>
+        </div>
       </div>
 
       <div v-if="countryDetails.length === 2" class="compare-grid" data-testid="compare-panel">
@@ -344,6 +398,16 @@ function handleSourceAudioStop(clipId: string) {
           <p class="inline-list">{{ countryDetails[0].phase.representativeArtists.join(' / ') }}</p>
           <p class="list-title">{{ language === 'zh' ? '代表作品' : 'Representative works' }}</p>
           <p class="inline-list">{{ countryDetails[0].phase.representativeWorks.join(' / ') }}</p>
+          <div class="linked-artist-list compact" data-testid="phase-linked-artists">
+            <p class="list-title">{{ language === 'zh' ? '关联音乐家' : 'Linked artists' }}</p>
+            <article v-for="artist in linkedArtists.filter((item) => item.countryId === countryDetails[0].country.id)" :key="artist.id" class="mini-artist-card">
+              <img :src="artist.portrait.src" :alt="language === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
+              <div>
+                <h4>{{ language === 'zh' ? artist.nameZh : artist.nameEn }}</h4>
+                <small>{{ artist.representativeWorks.slice(0, 2).map((work) => work.title).join(' / ') }}</small>
+              </div>
+            </article>
+          </div>
         </template>
       </article>
 
@@ -645,6 +709,27 @@ function handleSourceAudioStop(clipId: string) {
   border: 1px solid rgba(201, 143, 88, 0.18);
 }
 
+.artist-profile-head {
+  display: grid;
+  grid-template-columns: 5rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.artist-profile-head img,
+.mini-artist-card img {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border: 1px solid rgba(239, 228, 208, 0.14);
+}
+
+.artist-role {
+  margin: 0;
+  color: #f1d2a5;
+  line-height: 1.5;
+}
+
 .eyebrow {
   margin: 0;
   color: var(--atlas-accent);
@@ -732,7 +817,9 @@ function handleSourceAudioStop(clipId: string) {
 }
 
 .impact-note,
-.song-list {
+.song-list,
+.work-list,
+.linked-artist-list {
   display: grid;
   gap: 0.55rem;
 }
@@ -837,6 +924,8 @@ function handleSourceAudioStop(clipId: string) {
 .source-card,
 .audio-card,
 .song-card,
+.work-card,
+.mini-artist-card,
 .bibliography-section {
   display: grid;
   gap: 0.5rem;
@@ -847,10 +936,31 @@ function handleSourceAudioStop(clipId: string) {
 
 .source-card h4,
 .audio-card h4,
-.song-card h4 {
+.song-card h4,
+.work-card h4,
+.mini-artist-card h4 {
   margin: 0;
   color: var(--atlas-text);
   font-size: 1rem;
+}
+
+.work-card p,
+.mini-artist-card p {
+  margin: 0;
+  color: var(--atlas-muted);
+  line-height: 1.5;
+}
+
+.mini-artist-card {
+  grid-template-columns: 3.8rem minmax(0, 1fr);
+  align-items: start;
+}
+
+.mini-artist-card small {
+  display: block;
+  margin-top: 0.25rem;
+  color: #f0cf9f;
+  overflow-wrap: anywhere;
 }
 
 .meta-pill {
