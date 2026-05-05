@@ -20,4 +20,12 @@ npm run build
 
 The repository includes a GitHub Actions workflow at `.github/workflows/deploy-pages.yml`. On each push to `main`, it builds the Vite app, prepares the SPA fallback (`404.html`), and deploys `dist` to GitHub Pages.
 
+For a local GitHub Pages build, use:
+
+```sh
+npm run build:pages
+```
+
+That script builds with `/heatmap/` as the default asset base so dynamically imported chunks load correctly from a project Pages URL. Set `BASE_PATH` before running the script if the site is deployed somewhere else.
+
 No API keys or runtime environment variables are required for the static site.
