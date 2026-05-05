@@ -35,6 +35,7 @@ interface GlobePin {
 
 const props = defineProps<{
   activeYear: number
+  chrome?: 'full' | 'minimal'
   countries: CountryProfile[]
   enabledLayers: LayerKey[]
   events: HistoricEvent[]
@@ -45,6 +46,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  'preview-event': [eventId: string | null]
   'select-artist': [artistId: string]
   'select-country': [countryId: string]
   'select-event': [eventId: string]
@@ -301,6 +303,14 @@ function createMarkerElement(pin: GlobePin) {
   element.style.setProperty('--pin-color', pin.color)
   element.style.setProperty('--pin-glow', glow)
   element.setAttribute('aria-label', `${pin.title}: ${pin.categoryLabel ? `${pin.categoryLabel}, ` : ''}${pin.subtitle}`)
+  if (pin.type === 'event' && pin.eventId) {
+    element.setAttribute('data-testid', 'globe-event-pin')
+    element.setAttribute('data-pin-id', pin.eventId)
+    element.onpointerenter = () => emit('preview-event', pin.eventId ?? null)
+    element.onfocus = () => emit('preview-event', pin.eventId ?? null)
+    element.onpointerleave = () => emit('preview-event', null)
+    element.onblur = () => emit('preview-event', null)
+  }
   if (pin.isSelected) {
     element.classList.add('globe-pin--selected')
   }
@@ -508,14 +518,14 @@ onBeforeUnmount(() => {
   <div class="stage-shell">
     <div ref="container" class="stage" />
     <div class="mesh-overlay" />
-    <div class="globe-hint" data-testid="globe-hint">
+    <div v-if="chrome !== 'minimal'" class="globe-hint" data-testid="globe-hint">
       {{
         language === 'zh'
           ? '提示：点击艺术家地图钉可直接查看人物资料、来源与音频状态。'
           : 'Hint: click any artist pin to jump straight to the profile, sources, and audio state.'
       }}
     </div>
-    <div class="pin-legend">
+    <div v-if="chrome !== 'minimal'" class="pin-legend">
       <span><i class="dot dot-country" />{{ language === 'zh' ? '国家风格染色' : 'Country style tint' }}</span>
       <span><i class="dot dot-artist" />{{ language === 'zh' ? '艺术家地图钉' : 'Artist pin' }}</span>
       <span><i class="dot dot-event" />{{ language === 'zh' ? '历史事件地图钉' : 'Historic event pin' }}</span>
@@ -654,6 +664,8 @@ onBeforeUnmount(() => {
 }
 
 :global(.globe-pin) {
+  position: relative;
+  z-index: 5;
   display: inline-grid;
   justify-items: center;
   gap: 0.08rem;
@@ -662,6 +674,7 @@ onBeforeUnmount(() => {
   border: 0;
   background: transparent;
   cursor: pointer;
+  pointer-events: auto;
   transform: translate(-50%, -100%);
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.42));
   transition: transform 180ms ease, filter 180ms ease;

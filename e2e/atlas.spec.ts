@@ -1,35 +1,56 @@
 import { expect, test } from '@playwright/test'
 
-test('story chapters and event syncing work', async ({ page }) => {
+test('home story panel is compact and event rail opens process modal', async ({ page }) => {
   await page.goto('/')
 
-  await expect(page.getByText('战争如何改变音乐地图')).toBeVisible()
-  await page.getByRole('button', { name: '转折与交流 1944-1945' }).click()
-  await expect(page.getByText('巴黎解放')).toBeVisible()
-  await expect(page.getByText('1944')).toBeVisible()
+  const storyPanel = page.getByTestId('home-story-panel')
+  const eventRail = page.getByTestId('home-event-rail')
 
-  await page.getByTitle('中华人民共和国成立').click()
-  await expect(page.getByText('中华人民共和国成立')).toBeVisible()
-  await expect(page.getByText('1949')).toBeVisible()
+  await expect(storyPanel).toBeVisible()
+  await expect(eventRail).toBeVisible()
+  await expect(eventRail).toContainText('关键事件时间轴')
+
+  const storyBox = await storyPanel.boundingBox()
+  expect(storyBox?.width ?? 0).toBeLessThanOrEqual(390)
+
+  await eventRail.getByRole('button', { name: /巴黎解放/ }).click()
+
+  const modal = page.getByTestId('evidence-modal')
+  await expect(modal).toBeVisible()
+  await expect(modal).toContainText('转折与交流')
+  await expect(modal).toContainText('巴黎解放')
 })
 
-test('explore mode supports two-country comparison', async ({ page }) => {
+test('globe event pin previews on focus and opens the process modal on click', async ({ page }) => {
   await page.goto('/')
 
-  await page.getByTestId('mode-explore').click()
-  await page.getByRole('button', { name: '德国' }).click()
-  await page.getByRole('button', { name: '日本' }).click()
+  const firstEventPin = page.getByTestId('globe-event-pin').first()
+  await expect(firstEventPin).toBeVisible({ timeout: 15000 })
 
-  const comparePanel = page.getByTestId('compare-panel')
-  await expect(comparePanel).toContainText('德国')
-  await expect(comparePanel).toContainText('日本')
+  await firstEventPin.focus()
+  await expect(page.getByTestId('event-preview')).toBeVisible()
+  await expect(page.getByTestId('evidence-modal')).not.toBeVisible()
+
+  await firstEventPin.click({ force: true })
+  await expect(page.getByTestId('evidence-modal')).toBeVisible()
 })
 
-test('mobile layout keeps key panels visible', async ({ page }) => {
+test('mobile layout stacks story panel and event timeline without overlap', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
 
-  await expect(page.getByTestId('atlas-controls')).toBeVisible()
-  await expect(page.getByTestId('atlas-timeline')).toBeVisible()
-  await expect(page.getByTestId('detail-panel')).toBeVisible()
+  const storyPanel = page.getByTestId('home-story-panel')
+  const eventRail = page.getByTestId('home-event-rail')
+
+  await expect(storyPanel).toBeVisible()
+  await expect(eventRail).toBeVisible()
+
+  const storyBox = await storyPanel.boundingBox()
+  const railBox = await eventRail.boundingBox()
+
+  expect(storyBox).not.toBeNull()
+  expect(railBox).not.toBeNull()
+  expect(storyBox!.width).toBeLessThanOrEqual(390)
+  expect(railBox!.width).toBeLessThanOrEqual(390)
+  expect(storyBox!.y + storyBox!.height).toBeLessThanOrEqual(railBox!.y + 1)
 })

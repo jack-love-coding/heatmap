@@ -2,7 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: '.',
-  testMatch: ['**/atlas-en.spec.ts'],
+  testMatch: ['**/atlas-en.spec.ts', '**/e2e/atlas.spec.ts'],
   use: {
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',

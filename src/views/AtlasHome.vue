@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, ref } from 'vue'
 import { navigateTo } from '@/router'
 import { useAtlasState } from '@/composables/useAtlasState'
 import {
@@ -11,6 +11,7 @@ import {
   getEventDescription,
   getEventTitle,
   getFeaturedArtistsForContext,
+  getChapterForYear,
 } from '@/lib/atlas'
 import type { ArtistMarker } from '@/data/atlasMarkers'
 import type { ChapterEvidencePoint, ChapterScene, HistoricEvent, LayerKey, RelatedSong } from '@/data/ww2MusicAtlas'
@@ -18,12 +19,11 @@ import type { ChapterEvidencePoint, ChapterScene, HistoricEvent, LayerKey, Relat
 const GlobeStage = defineAsyncComponent(() => import('@/components/GlobeStage.vue'))
 const atlas = useAtlasState()
 const showEvidenceModal = ref(false)
+const processChapter = ref<ChapterScene | null>(null)
+const processEventId = ref<string | null>(null)
+const previewEventId = ref<string | null>(null)
 
-const chapterEvents = computed(() =>
-  atlas.activeChapter.value.focusEventIds
-    .map((eventId) => atlas.historicEvents.find((event) => event.id === eventId))
-    .filter((event): event is NonNullable<typeof event> => Boolean(event)),
-)
+let previewClearTimer: number | null = null
 
 const layers: LayerKey[] = ['styles', 'events', 'influence']
 const evidenceArtists = computed(() =>
@@ -35,7 +35,33 @@ const evidenceArtists = computed(() =>
   }),
 )
 
-function openEvent(eventId: string) {
+const activeProcessChapter = computed(() => processChapter.value ?? atlas.activeChapter.value)
+const processEvents = computed(() =>
+  activeProcessChapter.value.focusEventIds
+    .map((eventId) => atlas.historicEvents.find((event) => event.id === eventId))
+    .filter((event): event is NonNullable<typeof event> => Boolean(event)),
+)
+const processEvent = computed(() => findEvent(processEventId.value))
+const previewEvent = computed(() => findEvent(previewEventId.value))
+const previewChapter = computed(() => (previewEvent.value ? getChapterForEvent(previewEvent.value.id) : null))
+const activeChapterEventIds = computed(() => new Set(atlas.activeChapter.value.focusEventIds))
+
+function findEvent(eventId: string | null) {
+  if (!eventId) {
+    return null
+  }
+
+  return atlas.historicEvents.find((event) => event.id === eventId) ?? null
+}
+
+function getChapterForEvent(eventId: string) {
+  const event = findEvent(eventId)
+  const linkedChapter = atlas.chapterScenes.find((chapter) => chapter.focusEventIds.includes(eventId))
+
+  return linkedChapter ?? (event ? getChapterForYear(atlas.chapterScenes, event.year) : atlas.activeChapter.value)
+}
+
+function openEventPage(eventId: string) {
   showEvidenceModal.value = false
   atlas.selectEvent(eventId)
   navigateTo({
@@ -47,6 +73,54 @@ function openEvent(eventId: string) {
       lang: atlas.language.value,
     },
   })
+}
+
+function openProcess(chapter = atlas.activeChapter.value, eventId: string | null = null) {
+  processChapter.value = chapter
+  processEventId.value = eventId
+  showEvidenceModal.value = true
+  previewEventId.value = null
+}
+
+function openProcessForEvent(eventId: string) {
+  atlas.selectEvent(eventId)
+  openProcess(getChapterForEvent(eventId), eventId)
+}
+
+function closeProcessModal() {
+  showEvidenceModal.value = false
+}
+
+function handlePreviewEvent(eventId: string | null) {
+  if (previewClearTimer) {
+    window.clearTimeout(previewClearTimer)
+    previewClearTimer = null
+  }
+
+  if (eventId) {
+    previewEventId.value = eventId
+    return
+  }
+
+  previewClearTimer = window.setTimeout(() => {
+    previewEventId.value = null
+    previewClearTimer = null
+  }, 180)
+}
+
+function keepPreviewOpen() {
+  if (previewClearTimer) {
+    window.clearTimeout(previewClearTimer)
+    previewClearTimer = null
+  }
+}
+
+function isActiveEvent(event: HistoricEvent) {
+  return event.id === atlas.selectedEventId.value
+}
+
+function isChapterEvent(event: HistoricEvent) {
+  return activeChapterEventIds.value.has(event.id)
 }
 
 function openArtist(artistId: string) {
@@ -107,93 +181,149 @@ function getEventCountryLine(event: HistoricEvent) {
 function getSongNote(song: RelatedSong) {
   return atlas.language.value === 'zh' ? song.noteZh : song.noteEn
 }
+
+onBeforeUnmount(() => {
+  if (previewClearTimer) {
+    window.clearTimeout(previewClearTimer)
+  }
+})
 </script>
 
 <template>
   <main class="home-page">
-    <section class="hero-stage" aria-label="3D globe atlas">
-      <Suspense>
-        <GlobeStage
-          :active-year="atlas.activeYear.value"
-          :countries="atlas.countries"
-          :enabled-layers="atlas.enabledLayers.value"
-          :events="atlas.historicEvents"
-          :focus-pose="atlas.focusPose.value"
-          :language="atlas.language.value"
-          :selected-artist-id="atlas.selectedArtistId.value"
-          :selected-country-ids="atlas.selectedCountryIds.value"
-          @select-artist="openArtist"
-          @select-country="atlas.toggleCountry"
-          @select-event="openEvent"
-        />
-        <template #fallback>
-          <div class="stage-loading">{{ atlas.language.value === 'zh' ? '正在载入地球舞台' : 'Loading globe stage' }}</div>
-        </template>
-      </Suspense>
+    <section class="home-hero" aria-label="3D globe atlas">
+      <div class="hero-stage">
+        <Suspense>
+          <GlobeStage
+            chrome="minimal"
+            :active-year="atlas.activeYear.value"
+            :countries="atlas.countries"
+            :enabled-layers="atlas.enabledLayers.value"
+            :events="atlas.historicEvents"
+            :focus-pose="atlas.focusPose.value"
+            :language="atlas.language.value"
+            :selected-artist-id="atlas.selectedArtistId.value"
+            :selected-country-ids="atlas.selectedCountryIds.value"
+            @preview-event="handlePreviewEvent"
+            @select-artist="openArtist"
+            @select-country="atlas.toggleCountry"
+            @select-event="openProcessForEvent"
+          />
+          <template #fallback>
+            <div class="stage-loading">{{ atlas.language.value === 'zh' ? '正在载入地球舞台' : 'Loading globe stage' }}</div>
+          </template>
+        </Suspense>
+      </div>
+
+      <aside class="story-panel" data-testid="home-story-panel">
+        <p class="kicker">WWII MUSIC ATLAS</p>
+        <h1>{{ atlas.language.value === 'zh' ? '战争如何改变音乐地图' : 'How War Rewired the Musical Map' }}</h1>
+        <p class="project-intro">
+          {{
+            atlas.language.value === 'zh'
+              ? '以地球、时间轴和关键事件追踪 1931-1949 年间八个国家的音乐风格转向。'
+              : 'Track how eight countries changed musically between 1931 and 1949 through globe, timeline, and historical rupture.'
+          }}
+        </p>
+
+        <div class="chapter-strip" aria-label="Story chapters">
+          <button
+            v-for="(chapter, index) in atlas.chapterScenes"
+            :key="chapter.id"
+            type="button"
+            :class="{ active: chapter.id === atlas.activeChapter.value.id }"
+            @click="atlas.jumpChapter(chapter.id)"
+          >
+            <em>{{ String(index + 1).padStart(2, '0') }}</em>
+            <span>{{ getChapterTitle(chapter, atlas.language.value) }}</span>
+            <small>{{ chapter.yearRange[0] }}-{{ chapter.yearRange[1] }}</small>
+          </button>
+        </div>
+
+        <div class="panel-tools">
+          <button type="button" class="play-button" data-testid="timeline-play" @click="atlas.togglePlay">
+            {{ atlas.isPlaying.value ? (atlas.language.value === 'zh' ? '暂停' : 'Pause') : atlas.language.value === 'zh' ? '播放' : 'Play' }}
+          </button>
+          <label>
+            <span>{{ atlas.activeYear.value }}</span>
+            <input
+              data-testid="timeline-range"
+              type="range"
+              min="1931"
+              max="1949"
+              :value="atlas.activeYear.value"
+              @input="atlas.setYear(Number(($event.target as HTMLInputElement).value))"
+            >
+          </label>
+        </div>
+
+        <div class="layer-row">
+          <button
+            v-for="layer in layers"
+            :key="layer"
+            type="button"
+            :class="{ active: atlas.enabledLayers.value.includes(layer) }"
+            @click="atlas.toggleLayer(layer)"
+          >
+            {{
+              layer === 'styles'
+                ? atlas.language.value === 'zh' ? '风格' : 'Styles'
+                : layer === 'events'
+                  ? atlas.language.value === 'zh' ? '事件' : 'Events'
+                  : atlas.language.value === 'zh' ? '影响' : 'Influence'
+            }}
+          </button>
+        </div>
+      </aside>
+
+      <aside class="event-rail" data-testid="home-event-rail" aria-label="Key event timeline">
+        <p class="kicker">{{ atlas.language.value === 'zh' ? '关键事件时间轴' : 'Key Event Timeline' }}</p>
+        <div class="event-rail-list">
+          <button
+            v-for="event in atlas.historicEvents"
+            :key="event.id"
+            type="button"
+            class="event-rail-item"
+            :class="{ active: isActiveEvent(event), 'in-chapter': isChapterEvent(event) }"
+            @click="openProcessForEvent(event.id)"
+          >
+            <span class="event-year">{{ event.year }}</span>
+            <span class="event-node" aria-hidden="true" />
+            <span class="event-copy">
+              <strong>{{ getEventTitle(event, atlas.language.value) }}</strong>
+              <small>{{ getEventDescription(event, atlas.language.value) }}</small>
+            </span>
+          </button>
+        </div>
+      </aside>
+
+      <aside
+        v-if="previewEvent && previewChapter"
+        class="event-preview"
+        data-testid="event-preview"
+        @pointerenter="keepPreviewOpen"
+        @pointerleave="handlePreviewEvent(null)"
+        @focusin="keepPreviewOpen"
+        @focusout="handlePreviewEvent(null)"
+      >
+        <p class="kicker">{{ previewEvent.year }}</p>
+        <h2>{{ getEventTitle(previewEvent, atlas.language.value) }}</h2>
+        <p>{{ getChapterSummary(previewChapter, atlas.language.value) }}</p>
+        <div class="preview-steps">
+          <span v-for="point in previewChapter.evidencePoints" :key="`preview-${point.kind}`">
+            <small>{{ getEvidenceLabel(point) }}</small>
+            <strong>{{ getEvidenceTitle(point) }}</strong>
+          </span>
+        </div>
+        <button type="button" class="preview-open-button" @click="openProcessForEvent(previewEvent.id)">
+          {{ atlas.language.value === 'zh' ? '展开发展过程' : 'View process' }}
+        </button>
+      </aside>
     </section>
 
-    <aside class="story-panel" data-testid="home-story-panel">
-      <p class="kicker">WWII MUSIC ATLAS</p>
-      <h1>{{ atlas.language.value === 'zh' ? '战争如何改变音乐地图' : 'How War Rewired the Musical Map' }}</h1>
-      <p>
-        {{
-          atlas.language.value === 'zh'
-            ? '以地球、时间轴和关键事件追踪 1931-1949 年间八个国家的音乐风格转向。'
-            : 'Track how eight countries changed musically between 1931 and 1949 through globe, timeline, and historical rupture.'
-        }}
-      </p>
-
-      <div class="chapter-strip" aria-label="Story chapters">
-        <button
-          v-for="chapter in atlas.chapterScenes"
-          :key="chapter.id"
-          type="button"
-          :class="{ active: chapter.id === atlas.activeChapter.value.id }"
-          @click="atlas.jumpChapter(chapter.id)"
-        >
-          <img :src="chapter.thumbnail.src" :alt="atlas.language.value === 'zh' ? chapter.thumbnail.altZh : chapter.thumbnail.altEn">
-          <span>{{ getChapterTitle(chapter, atlas.language.value) }}</span>
-          <small>{{ chapter.yearRange[0] }}-{{ chapter.yearRange[1] }}</small>
-        </button>
-      </div>
-
-      <div class="panel-tools">
-        <button type="button" class="play-button" data-testid="timeline-play" @click="atlas.togglePlay">
-          {{ atlas.isPlaying.value ? (atlas.language.value === 'zh' ? '暂停' : 'Pause') : atlas.language.value === 'zh' ? '播放' : 'Play' }}
-        </button>
-        <label>
-          <span>{{ atlas.activeYear.value }}</span>
-          <input
-            data-testid="timeline-range"
-            type="range"
-            min="1931"
-            max="1949"
-            :value="atlas.activeYear.value"
-            @input="atlas.setYear(Number(($event.target as HTMLInputElement).value))"
-          >
-        </label>
-      </div>
-
-      <div class="layer-row">
-        <button
-          v-for="layer in layers"
-          :key="layer"
-          type="button"
-          :class="{ active: atlas.enabledLayers.value.includes(layer) }"
-          @click="atlas.toggleLayer(layer)"
-        >
-          {{
-            layer === 'styles'
-              ? atlas.language.value === 'zh' ? '风格' : 'Styles'
-              : layer === 'events'
-                ? atlas.language.value === 'zh' ? '事件' : 'Events'
-                : atlas.language.value === 'zh' ? '影响' : 'Influence'
-          }}
-        </button>
-      </div>
-
-      <section class="connection-chain" data-testid="home-connection-chain">
-        <p class="kicker">{{ atlas.language.value === 'zh' ? '证据链' : 'Evidence Chain' }}</p>
+    <section class="home-docks" aria-label="Chapter detail panels">
+      <section class="connection-chain dock-panel" data-testid="home-connection-chain">
+        <p class="kicker">{{ atlas.language.value === 'zh' ? '发展过程' : 'Development Process' }}</p>
         <div class="chain-steps">
           <article v-for="(point, index) in atlas.activeChapter.value.evidencePoints" :key="point.kind">
             <span>{{ String(index + 1).padStart(2, '0') }}</span>
@@ -206,44 +336,31 @@ function getSongNote(song: RelatedSong) {
           type="button"
           class="evidence-trigger"
           data-testid="open-evidence-modal"
-          @click="showEvidenceModal = true"
+          @click="openProcess()"
         >
-          {{ atlas.language.value === 'zh' ? '展开证据链' : 'Open evidence' }}
+          {{ atlas.language.value === 'zh' ? '展开发展过程' : 'View development process' }}
         </button>
       </section>
-    </aside>
 
-    <section class="event-dock" data-testid="home-event-dock">
-      <p class="kicker">{{ atlas.language.value === 'zh' ? '重大事件' : 'Key Events' }}</p>
-      <h2>{{ getChapterTitle(atlas.activeChapter.value, atlas.language.value) }}</h2>
-      <p>{{ getChapterSummary(atlas.activeChapter.value, atlas.language.value) }}</p>
-      <div class="event-list">
-        <button v-for="event in chapterEvents" :key="event.id" type="button" @click="openEvent(event.id)">
-          <span>{{ event.year }}</span>
-          <strong>{{ getEventTitle(event, atlas.language.value) }}</strong>
-          <small>{{ getEventDescription(event, atlas.language.value) }}</small>
-        </button>
-      </div>
-    </section>
-
-    <section class="artist-dock" data-testid="home-artist-dock">
-      <p class="kicker">{{ atlas.language.value === 'zh' ? '相关音乐家' : 'Linked Artists' }}</p>
-      <div class="artist-card-list">
-        <button
-          v-for="artist in evidenceArtists"
-          :key="artist.id"
-          type="button"
-          :class="{ active: artist.id === atlas.selectedArtistId.value }"
-          @click="openArtist(artist.id)"
-        >
-          <img :src="artist.portrait.src" :alt="atlas.language.value === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
-          <span>
-            <strong>{{ atlas.language.value === 'zh' ? artist.nameZh : artist.nameEn }}</strong>
-            <small>{{ getArtistRole(artist, atlas.language.value) }}</small>
-            <em>{{ getPrimaryWorkLine(artist) }}</em>
-          </span>
-        </button>
-      </div>
+      <section class="artist-dock dock-panel" data-testid="home-artist-dock">
+        <p class="kicker">{{ atlas.language.value === 'zh' ? '相关音乐家' : 'Linked Artists' }}</p>
+        <div class="artist-card-list">
+          <button
+            v-for="artist in evidenceArtists"
+            :key="artist.id"
+            type="button"
+            :class="{ active: artist.id === atlas.selectedArtistId.value }"
+            @click="openArtist(artist.id)"
+          >
+            <img :src="artist.portrait.src" :alt="atlas.language.value === 'zh' ? artist.portrait.altZh : artist.portrait.altEn">
+            <span>
+              <strong>{{ atlas.language.value === 'zh' ? artist.nameZh : artist.nameEn }}</strong>
+              <small>{{ getArtistRole(artist, atlas.language.value) }}</small>
+              <em>{{ getPrimaryWorkLine(artist) }}</em>
+            </span>
+          </button>
+        </div>
+      </section>
     </section>
 
     <div
@@ -251,24 +368,27 @@ function getSongNote(song: RelatedSong) {
       class="evidence-modal"
       role="dialog"
       aria-modal="true"
-      :aria-label="atlas.language.value === 'zh' ? '章节证据链详情' : 'Chapter evidence details'"
+      :aria-label="atlas.language.value === 'zh' ? '章节发展过程详情' : 'Chapter development process details'"
       data-testid="evidence-modal"
     >
-      <div class="evidence-backdrop" @click="showEvidenceModal = false" />
+      <div class="evidence-backdrop" @click="closeProcessModal" />
       <section class="evidence-card">
         <header class="evidence-head">
           <figure>
             <img
-              :src="atlas.activeChapter.value.thumbnail.src"
-              :alt="atlas.language.value === 'zh' ? atlas.activeChapter.value.thumbnail.altZh : atlas.activeChapter.value.thumbnail.altEn"
+              :src="activeProcessChapter.thumbnail.src"
+              :alt="atlas.language.value === 'zh' ? activeProcessChapter.thumbnail.altZh : activeProcessChapter.thumbnail.altEn"
             >
           </figure>
           <div>
-            <p class="kicker">{{ atlas.activeChapter.value.yearRange[0] }}-{{ atlas.activeChapter.value.yearRange[1] }}</p>
-            <h2>{{ getChapterTitle(atlas.activeChapter.value, atlas.language.value) }}</h2>
-            <p>{{ getChapterDetail(atlas.activeChapter.value) }}</p>
+            <p class="kicker">{{ activeProcessChapter.yearRange[0] }}-{{ activeProcessChapter.yearRange[1] }}</p>
+            <h2>{{ getChapterTitle(activeProcessChapter, atlas.language.value) }}</h2>
+            <p>{{ getChapterDetail(activeProcessChapter) }}</p>
+            <p v-if="processEvent" class="focused-event-line">
+              {{ getEventTitle(processEvent, atlas.language.value) }}
+            </p>
           </div>
-          <button class="evidence-close" type="button" @click="showEvidenceModal = false">
+          <button class="evidence-close" type="button" @click="closeProcessModal">
             {{ atlas.language.value === 'zh' ? '关闭' : 'Close' }}
           </button>
         </header>
@@ -276,7 +396,7 @@ function getSongNote(song: RelatedSong) {
         <div class="evidence-section">
           <p class="kicker">{{ atlas.language.value === 'zh' ? '阅读路径' : 'Reading Path' }}</p>
           <div class="modal-evidence-grid">
-            <article v-for="point in atlas.activeChapter.value.evidencePoints" :key="`modal-${point.kind}`">
+            <article v-for="point in activeProcessChapter.evidencePoints" :key="`modal-${point.kind}`">
               <small>{{ getEvidenceLabel(point) }}</small>
               <strong>{{ getEvidenceTitle(point) }}</strong>
               <p>{{ getEvidenceBody(point) }}</p>
@@ -287,7 +407,11 @@ function getSongNote(song: RelatedSong) {
         <div class="evidence-section">
           <p class="kicker">{{ atlas.language.value === 'zh' ? '关联事件与声音证据' : 'Linked Events and Sound Evidence' }}</p>
           <div class="modal-event-list">
-            <article v-for="event in chapterEvents" :key="`modal-${event.id}`">
+            <article
+              v-for="event in processEvents"
+              :key="`modal-${event.id}`"
+              :class="{ focused: processEvent?.id === event.id }"
+            >
               <img v-if="event.image" :src="event.image.src" :alt="getEventImageAlt(event)" loading="lazy">
               <div class="modal-event-copy">
                 <div class="modal-event-meta">
@@ -304,7 +428,7 @@ function getSongNote(song: RelatedSong) {
                     <em>{{ getSongNote(song) }}</em>
                   </span>
                 </div>
-                <button type="button" class="event-open-button" @click="openEvent(event.id)">
+                <button type="button" class="event-open-button" @click="openEventPage(event.id)">
                   {{ atlas.language.value === 'zh' ? '进入事件页' : 'Open event page' }}
                 </button>
               </div>
@@ -320,12 +444,23 @@ function getSongNote(song: RelatedSong) {
 .home-page {
   position: relative;
   min-height: 100svh;
+  overflow-x: hidden;
+}
+
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: start;
+  min-height: 100svh;
+  padding: 5.8rem 1.2rem 2rem;
   overflow: hidden;
 }
 
 .hero-stage {
   position: absolute;
   inset: 0;
+  z-index: 0;
 }
 
 .stage-loading {
@@ -337,7 +472,9 @@ function getSongNote(song: RelatedSong) {
 }
 
 .story-panel,
-.event-dock {
+.dock-panel,
+.event-rail,
+.event-preview {
   position: relative;
   z-index: 3;
   background: linear-gradient(180deg, rgba(9, 14, 20, 0.82), rgba(9, 14, 20, 0.52));
@@ -346,9 +483,30 @@ function getSongNote(song: RelatedSong) {
 }
 
 .story-panel {
-  width: min(31rem, calc(100vw - 2rem));
-  margin: 6.4rem 0 0 1.2rem;
-  padding: 1.25rem;
+  width: min(23.5rem, calc(100vw - 2rem));
+  max-height: calc(100svh - 6.9rem);
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  box-shadow: var(--atlas-shadow);
+}
+
+.home-docks {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(20rem, 1.05fr) minmax(18rem, 0.95fr);
+  gap: 1rem;
+  padding: 1rem 1.2rem 1.6rem;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(201, 143, 88, 0.1), transparent 28rem),
+    linear-gradient(180deg, rgba(7, 10, 15, 0.92), #0c1118 42%, #111922 100%);
+}
+
+.dock-panel {
+  min-width: 0;
+  padding: 1rem;
+  align-self: start;
 }
 
 .kicker {
@@ -367,9 +525,9 @@ h2 {
 }
 
 h1 {
-  max-width: 9ch;
-  margin-top: 0.55rem;
-  font-size: clamp(2.8rem, 5vw, 5.4rem);
+  max-width: 10ch;
+  margin-top: 0.45rem;
+  font-size: clamp(2.05rem, 3.6vw, 3.8rem);
 }
 
 h2 {
@@ -379,6 +537,11 @@ h2 {
 p {
   margin: 0.8rem 0 0;
   color: var(--atlas-muted);
+}
+
+.project-intro {
+  max-width: 28rem;
+  line-height: 1.55;
 }
 
 .chapter-strip,
@@ -391,7 +554,7 @@ p {
 }
 
 .chapter-strip {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .chapter-strip button,
@@ -400,7 +563,9 @@ p {
 .event-list button,
 .evidence-trigger,
 .evidence-close,
-.event-open-button {
+.event-open-button,
+.event-rail-item,
+.preview-open-button {
   border: 1px solid rgba(239, 228, 208, 0.12);
   background: rgba(255, 255, 255, 0.04);
   color: var(--atlas-text);
@@ -409,29 +574,33 @@ p {
 
 .chapter-strip button {
   display: grid;
-  gap: 0.2rem;
-  min-height: 5rem;
-  padding: 0.38rem;
+  grid-template-columns: 2rem minmax(0, 1fr) auto;
+  gap: 0.35rem;
+  min-height: 0;
+  padding: 0.52rem 0.58rem;
+  align-items: center;
   text-align: left;
   overflow: hidden;
 }
 
-.chapter-strip img {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  object-fit: cover;
-  opacity: 0.78;
-  filter: sepia(0.25) contrast(1.04);
+.chapter-strip em {
+  color: var(--atlas-accent);
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 0.82rem;
+  font-style: normal;
 }
 
 .chapter-strip span {
-  padding: 0 0.2rem;
-  font-size: 0.8rem;
+  min-width: 0;
+  font-size: 0.82rem;
   line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chapter-strip small {
-  padding: 0 0.2rem 0.18rem;
+  justify-self: end;
 }
 
 .chapter-strip small,
@@ -448,13 +617,13 @@ p {
 .panel-tools {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.9rem;
+  gap: 0.75rem;
   align-items: center;
-  margin-top: 1rem;
+  margin-top: 0.85rem;
 }
 
 .play-button {
-  padding: 0.72rem 0.95rem;
+  padding: 0.62rem 0.78rem;
 }
 
 .panel-tools label {
@@ -464,32 +633,178 @@ p {
 
 .panel-tools label span {
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
-  font-size: 1.8rem;
+  font-size: 1.45rem;
 }
 
 .layer-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
-  margin-top: 1rem;
+  gap: 0.45rem;
+  margin-top: 0.85rem;
 }
 
 .layer-row button {
-  padding: 0.5rem 0.82rem;
+  padding: 0.44rem 0.66rem;
 }
 
-.event-dock {
+.event-rail {
   position: absolute;
+  top: 5.8rem;
   right: 1.2rem;
-  bottom: 1.2rem;
-  width: min(32rem, calc(100vw - 2rem));
-  padding: 1rem;
+  bottom: 2rem;
+  width: min(25rem, 31vw);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.95rem;
+  overflow: hidden;
+  box-shadow: var(--atlas-shadow);
+}
+
+.event-rail-list {
+  position: relative;
+  display: grid;
+  gap: 0.32rem;
+  overflow: auto;
+  padding: 0.1rem 0 0.3rem;
+}
+
+.event-rail-list::before {
+  content: '';
+  position: absolute;
+  top: 0.35rem;
+  bottom: 0.55rem;
+  left: 4.15rem;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(201, 143, 88, 0.52), transparent);
+}
+
+.event-rail-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.35rem 1.15rem minmax(0, 1fr);
+  gap: 0.55rem;
+  align-items: start;
+  padding: 0.46rem 0.42rem;
+  text-align: left;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.event-rail-item:hover,
+.event-rail-item:focus-visible,
+.event-rail-item.active {
+  background: rgba(201, 143, 88, 0.14);
+  border-color: rgba(201, 143, 88, 0.38);
+}
+
+.event-rail-item.in-chapter:not(.active) {
+  border-color: rgba(239, 228, 208, 0.2);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.event-year {
+  color: var(--atlas-accent);
+  font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+  font-size: 1rem;
+  line-height: 1.1;
+}
+
+.event-node {
+  position: relative;
+  z-index: 1;
+  width: 0.64rem;
+  height: 0.64rem;
+  margin-top: 0.18rem;
+  border-radius: 999px;
+  background: rgba(239, 228, 208, 0.45);
+  box-shadow: 0 0 0 0.32rem rgba(239, 228, 208, 0.06);
+}
+
+.event-rail-item.active .event-node,
+.event-rail-item.in-chapter .event-node {
+  background: var(--atlas-accent);
+  box-shadow: 0 0 0 0.32rem rgba(201, 143, 88, 0.18);
+}
+
+.event-copy {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.event-copy strong {
+  color: var(--atlas-text);
+  font-size: 0.86rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.event-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: rgba(239, 228, 208, 0.58);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.event-preview {
+  position: absolute;
+  left: 1.2rem;
+  bottom: 2rem;
+  width: min(23rem, 30vw);
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.9rem;
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.38);
+}
+
+.event-preview h2 {
+  font-size: clamp(1.15rem, 1.6vw, 1.55rem);
+}
+
+.event-preview p {
+  margin-top: 0;
+  line-height: 1.5;
+}
+
+.preview-steps {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.preview-steps span {
+  display: grid;
+  gap: 0.16rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(239, 228, 208, 0.08);
+}
+
+.preview-steps small {
+  color: var(--atlas-accent);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.preview-steps strong {
+  color: var(--atlas-text);
+  font-size: 0.82rem;
+  line-height: 1.25;
+}
+
+.preview-open-button {
+  justify-self: start;
+  padding: 0.54rem 0.72rem;
+  background: rgba(201, 143, 88, 0.14);
+  border-color: rgba(201, 143, 88, 0.34);
 }
 
 .connection-chain {
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(239, 228, 208, 0.1);
+  display: grid;
+  align-content: start;
 }
 
 .chain-steps {
@@ -544,17 +859,8 @@ p {
 }
 
 .artist-dock {
-  position: absolute;
-  right: 1.2rem;
-  top: 6.4rem;
-  z-index: 3;
-  width: min(22rem, calc(100vw - 2rem));
-  max-height: calc(100svh - 24rem);
-  overflow: auto;
-  padding: 1rem;
-  background: linear-gradient(180deg, rgba(9, 14, 20, 0.78), rgba(9, 14, 20, 0.5));
-  border: 1px solid rgba(239, 228, 208, 0.1);
-  backdrop-filter: blur(18px);
+  display: grid;
+  align-content: start;
 }
 
 .artist-card-list button {
@@ -674,6 +980,14 @@ p {
   line-height: 1.65;
 }
 
+.focused-event-line {
+  width: fit-content;
+  padding: 0.36rem 0.56rem;
+  background: rgba(201, 143, 88, 0.12);
+  border: 1px solid rgba(201, 143, 88, 0.28);
+  color: var(--atlas-text);
+}
+
 .evidence-close {
   padding: 0.58rem 0.78rem;
 }
@@ -733,6 +1047,11 @@ p {
   grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr);
   gap: 0.9rem;
   padding: 0.75rem;
+}
+
+.modal-event-list article.focused {
+  border-color: rgba(201, 143, 88, 0.42);
+  background: rgba(201, 143, 88, 0.08);
 }
 
 .modal-event-list img {
@@ -795,30 +1114,114 @@ p {
   padding: 0.58rem 0.8rem;
 }
 
-@media (max-width: 900px) {
-  .home-page {
-    min-height: auto;
-    overflow: visible;
-    padding-top: 12rem;
+@media (max-width: 1080px) {
+  .home-docks {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .hero-stage {
-    position: relative;
-    min-height: 62svh;
-  }
-
-  .story-panel,
-  .event-dock,
   .artist-dock {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 900px) {
+  .home-hero {
+    gap: 0.75rem;
+    overflow: visible;
+  }
+
+  .event-rail,
+  .event-preview {
     position: relative;
-    inset: auto;
-    width: auto;
-    margin: 0.8rem;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    width: min(100%, 36rem);
+  }
+
+  .event-rail {
+    max-height: 34rem;
+  }
+
+  .event-preview {
+    order: 3;
+  }
+}
+
+@media (max-width: 760px) {
+  .home-hero {
+    align-items: start;
+    min-height: auto;
+    padding: 9.8rem 0.75rem 1rem;
+  }
+
+  .story-panel {
+    width: 100%;
     max-height: none;
+    padding: 0.9rem;
+  }
+
+  h1 {
+    max-width: 11ch;
+    font-size: clamp(2rem, 11vw, 2.85rem);
   }
 
   .chapter-strip {
+    display: flex;
+    gap: 0.55rem;
+    margin-right: -1rem;
+    padding-right: 1rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .chapter-strip button {
+    flex: 0 0 14rem;
+    min-height: 0;
+    scroll-snap-align: start;
+  }
+
+  .event-rail {
+    width: 100%;
+    max-height: 26rem;
+    padding: 0.85rem;
+  }
+
+  .event-rail-item {
+    grid-template-columns: 3.2rem 1rem minmax(0, 1fr);
+    padding: 0.44rem 0.38rem;
+  }
+
+  .event-preview {
+    width: 100%;
+    padding: 0.85rem;
+  }
+
+  .panel-tools {
     grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .play-button {
+    justify-self: start;
+  }
+
+  .home-docks {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    padding: 0.8rem 0.75rem 1.1rem;
+  }
+
+  .dock-panel {
+    padding: 0.9rem;
+  }
+
+  .artist-dock {
+    grid-column: auto;
+  }
+
+  .artist-card-list button {
+    grid-template-columns: 3.2rem minmax(0, 1fr);
   }
 
   .evidence-head,

@@ -10,26 +10,31 @@ test('home foregrounds the globe story and key events', async ({ page }) => {
 
   await expect(page.getByText('How War Rewired the Musical Map')).toBeVisible()
   await expect(page.getByTestId('home-story-panel')).toBeVisible()
-  await expect(page.getByTestId('home-event-dock')).toContainText('Key Events')
+  await expect(page.getByTestId('home-connection-chain')).toContainText('Development Process')
+  await expect(page.locator('body')).not.toContainText('Evidence Chain')
+  await expect(page.getByTestId('home-event-rail')).toContainText('Key Event Timeline')
   await expect(page.getByRole('link', { name: 'Events' })).toBeVisible()
 })
 
-test('home event cards open the events page with synced detail', async ({ page }) => {
+test('home event rail opens process modal and links to synced event detail', async ({ page }) => {
   await page.goto('/')
   await switchToEnglish(page)
 
-  await page.getByTestId('home-event-dock').getByRole('button', { name: /Mukden Incident/ }).click()
+  await page.getByTestId('home-event-rail').getByRole('button', { name: /Mukden Incident/ }).click()
 
+  await expect(page.getByTestId('evidence-modal')).toContainText('Mukden Incident')
+  await page.getByTestId('evidence-modal').getByRole('button', { name: 'Open event page' }).first().click()
   await expect(page).toHaveURL(/\/events/)
   await expect(page.getByTestId('event-detail')).toContainText('Mukden Incident')
   await expect(page.getByTestId('event-detail')).toContainText('1931')
 })
 
-test('home opens chapter evidence modal and syncs chapter changes', async ({ page }) => {
+test('home opens chapter development process modal and syncs chapter changes', async ({ page }) => {
   await page.goto('/')
   await switchToEnglish(page)
 
   await expect(page.getByTestId('home-connection-chain')).toContainText('Historical trigger')
+  await expect(page.getByTestId('open-evidence-modal')).toContainText('View development process')
   await page.getByTestId('open-evidence-modal').click()
 
   await expect(page.getByTestId('evidence-modal')).toContainText('Pre-war Cultural Tension')
@@ -82,7 +87,23 @@ test('mobile home no longer stacks every secondary panel in the first viewport',
   await page.goto('/')
 
   await expect(page.getByTestId('home-story-panel')).toBeVisible()
-  await expect(page.getByTestId('home-event-dock')).toBeVisible()
+  await expect(page.getByTestId('home-event-rail')).toBeVisible()
+  await expect(page.getByTestId('home-connection-chain')).toBeVisible()
+  await expect(page.getByTestId('home-artist-dock')).toBeVisible()
   await expect(page.getByTestId('detail-panel')).toHaveCount(0)
   await expect(page.getByTestId('background-player')).toHaveCount(0)
+
+  const positions = await page.evaluate(() => {
+    const heroBottom = document.querySelector('.home-hero')?.getBoundingClientRect().bottom ?? 0
+    const storyBottom = document.querySelector('[data-testid="home-story-panel"]')?.getBoundingClientRect().bottom ?? 0
+    const railTop = document.querySelector('[data-testid="home-event-rail"]')?.getBoundingClientRect().top ?? 0
+    const connectionTop = document.querySelector('[data-testid="home-connection-chain"]')?.getBoundingClientRect().top ?? 0
+    const artistTop = document.querySelector('[data-testid="home-artist-dock"]')?.getBoundingClientRect().top ?? 0
+
+    return { artistTop, connectionTop, heroBottom, railTop, storyBottom }
+  })
+
+  expect(positions.railTop).toBeGreaterThanOrEqual(positions.storyBottom - 1)
+  expect(positions.connectionTop).toBeGreaterThanOrEqual(positions.heroBottom - 1)
+  expect(positions.artistTop).toBeGreaterThanOrEqual(positions.heroBottom - 1)
 })

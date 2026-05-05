@@ -735,8 +735,8 @@ export const chapterScenes: ChapterScene[] = [
         labelEn: 'Visible and audible evidence',
         titleZh: '从魏玛舞台到中国救亡歌曲',
         titleEn: 'From Weimar stage song to Chinese resistance song',
-        bodyZh: 'Kurt Weill、聂耳、周璇等人物把观众带到具体作品：歌舞厅、电影歌曲和群众歌曲正在形成不同证据链。',
-        bodyEn: 'Figures such as Kurt Weill, Nie Er, and Zhou Xuan anchor the chain in actual works: cabaret, film song, and mass song were forming different evidentiary trails.',
+        bodyZh: 'Kurt Weill、聂耳、周璇等人物把观众带到具体作品：歌舞厅、电影歌曲和群众歌曲正在形成不同发展路径。',
+        bodyEn: 'Figures such as Kurt Weill, Nie Er, and Zhou Xuan anchor the process in actual works: cabaret, film song, and mass song were moving along different development trails.',
       },
     ],
     thumbnail: generatedChapterImage(
@@ -756,9 +756,9 @@ export const chapterScenes: ChapterScene[] = [
     summaryZh: '轴心国与东亚战线推动国策音乐、广播与仪式节奏同步化。',
     summaryEn: 'Axis politics and the East Asian front synchronize policy songs, broadcasting, and ceremonial rhythm.',
     detailZh:
-      '1936-1940 年的证据链更直接：政治扩张把音乐推入宣传和仪式系统。罗马-柏林轴心让威权国家共享进行曲、群众集会、新闻影像和电台纪律的声音模板；全面侵华战争迫使中国音乐中心内迁，使抗战合唱和救亡歌曲成为公共动员工具；欧洲战争爆发后，英法德意的广播不再只是娱乐媒介，而成为组织恐惧、希望、纪律和士气的基础设施。',
+      '1936-1940 年的发展过程更直接：政治扩张把音乐推入宣传和仪式系统。罗马-柏林轴心让威权国家共享进行曲、群众集会、新闻影像和电台纪律的声音模板；全面侵华战争迫使中国音乐中心内迁，使抗战合唱和救亡歌曲成为公共动员工具；欧洲战争爆发后，英法德意的广播不再只是娱乐媒介，而成为组织恐惧、希望、纪律和士气的基础设施。',
     detailEn:
-      'The evidence chain from 1936 to 1940 is more explicit: political expansion pushed music into propaganda and ceremony. The Rome-Berlin Axis aligned authoritarian templates of marches, rallies, newsreels, and disciplined radio; the full-scale Sino-Japanese War forced Chinese music centers inland and made resistance chorus a tool of public mobilization; once war broke out in Europe, broadcasting in Britain, France, Germany, and Italy became infrastructure for fear, hope, discipline, and morale rather than entertainment alone.',
+      'The development process from 1936 to 1940 is more explicit: political expansion pushed music into propaganda and ceremony. The Rome-Berlin Axis aligned authoritarian templates of marches, rallies, newsreels, and disciplined radio; the full-scale Sino-Japanese War forced Chinese music centers inland and made resistance chorus a tool of public mobilization; once war broke out in Europe, broadcasting in Britain, France, Germany, and Italy became infrastructure for fear, hope, discipline, and morale rather than entertainment alone.',
     evidencePoints: [
       {
         kind: 'historical-trigger',
@@ -831,8 +831,8 @@ export const chapterScenes: ChapterScene[] = [
         kind: 'audible-evidence',
         labelZh: '可见/可听证据',
         labelEn: 'Visible and audible evidence',
-        titleZh: 'V-Disc、前线歌曲和广播人物形成证据链',
-        titleEn: 'V-Discs, frontline songs, and radio figures form the evidence chain',
+        titleZh: 'V-Disc、前线歌曲和广播人物呈现发展过程',
+        titleEn: 'V-Discs, frontline songs, and radio figures show the development process',
         bodyZh: 'Andrews Sisters、Glenn Miller、Klavdiya Shulzhenko、Lale Andersen 等人物把宏观战局落到具体声音。',
         bodyEn: 'The Andrews Sisters, Glenn Miller, Klavdiya Shulzhenko, Lale Andersen, and others turn the macro war into specific sounds.',
       },
@@ -854,9 +854,9 @@ export const chapterScenes: ChapterScene[] = [
     summaryZh: '盟军推进与城市解放，使跨国音乐流动重新打开。',
     summaryEn: 'Allied advances and liberated cities reopen channels of transnational musical exchange.',
     detailZh:
-      '1944-1945 年的证据链从“封闭”转向“重新流动”。巴黎解放恢复了香颂、爵士俱乐部和夜生活，也把盟军爵士带回城市空间；德国投降使去纳粹化广播、文化重建和爵士回归成为新起点；日本投降则让占领军广播、俱乐部和电影歌曲迅速改写日本战后流行听觉。音乐在这里不只是庆祝胜利，也记录了占领、重建和跨国接触的重新开启。',
+      '1944-1945 年的发展过程从“封闭”转向“重新流动”。巴黎解放恢复了香颂、爵士俱乐部和夜生活，也把盟军爵士带回城市空间；德国投降使去纳粹化广播、文化重建和爵士回归成为新起点；日本投降则让占领军广播、俱乐部和电影歌曲迅速改写日本战后流行听觉。音乐在这里不只是庆祝胜利，也记录了占领、重建和跨国接触的重新开启。',
     detailEn:
-      'The 1944-1945 chain turns from closure to renewed circulation. The Liberation of Paris reopened chanson, jazz clubs, and nightlife while bringing Allied jazz back into the city; German surrender created a starting point for denazified broadcasting, cultural reconstruction, and the return of jazz; Japan’s surrender allowed occupation radio, clubs, and film song to rapidly rewrite postwar listening. Music here is not only victory celebration; it records occupation, rebuilding, and reopened contact.',
+      'The 1944-1945 development process turns from closure to renewed circulation. The Liberation of Paris reopened chanson, jazz clubs, and nightlife while bringing Allied jazz back into the city; German surrender created a starting point for denazified broadcasting, cultural reconstruction, and the return of jazz; Japan’s surrender allowed occupation radio, clubs, and film song to rapidly rewrite postwar listening. Music here is not only victory celebration; it records occupation, rebuilding, and reopened contact.',
     evidencePoints: [
       {
         kind: 'historical-trigger',
@@ -903,9 +903,9 @@ export const chapterScenes: ChapterScene[] = [
     summaryZh: '战后广播、唱片与占领秩序重塑了新的全球流行音乐版图。',
     summaryEn: 'Postwar broadcasting, records, and occupation orders reshape a new global map of popular music.',
     detailZh:
-      '1946-1949 年的重点是战后秩序如何把战时声音转化为长期遗产。马歇尔援助、唱片市场和广播现代化使西欧更快靠近美国流行工业；占领期日本把爵士、布吉和电影歌曲重新组织成都市娱乐；中国则把抗战时期形成的群众歌曲、合唱组织和电影歌曲经验纳入新的国家叙事。证据链的终点不是战争结束，而是战时传播机制如何成为战后流行音乐、公共广播和国家声音的基础。',
+      '1946-1949 年的重点是战后秩序如何把战时声音转化为长期遗产。马歇尔援助、唱片市场和广播现代化使西欧更快靠近美国流行工业；占领期日本把爵士、布吉和电影歌曲重新组织成都市娱乐；中国则把抗战时期形成的群众歌曲、合唱组织和电影歌曲经验纳入新的国家叙事。发展过程的终点不是战争结束，而是战时传播机制如何成为战后流行音乐、公共广播和国家声音的基础。',
     detailEn:
-      'The 1946-1949 focus is how the postwar order turns wartime sound into lasting legacy. Marshall Aid, record markets, and broadcast modernization pull Western Europe toward the U.S. popular industry; occupation Japan reorganizes jazz, boogie, and film song into urban entertainment; China folds wartime mass song, choral organization, and film-song experience into a new state narrative. The chain does not end with the war; it shows wartime circulation becoming the basis for postwar popular music, public broadcasting, and state sound.',
+      'The 1946-1949 focus is how the postwar order turns wartime sound into lasting legacy. Marshall Aid, record markets, and broadcast modernization pull Western Europe toward the U.S. popular industry; occupation Japan reorganizes jazz, boogie, and film song into urban entertainment; China folds wartime mass song, choral organization, and film-song experience into a new state narrative. The process does not end with the war; it shows wartime circulation becoming the basis for postwar popular music, public broadcasting, and state sound.',
     evidencePoints: [
       {
         kind: 'historical-trigger',
