@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import AtlasDetailPanel from '@/components/AtlasDetailPanel.vue'
+import { SOURCE_AUDIO_STATE_EVENT } from '@/lib/audioBus'
 import { buildDetailSourceGroups, chapterScenes, getActiveStylePhase, getArtistById, getCountryById, getEventById, stylePhases } from '@/lib/atlas'
 
 describe('AtlasDetailPanel', () => {
@@ -60,10 +61,12 @@ describe('AtlasDetailPanel', () => {
 
     await wrapper.get('[data-testid="tab-sources"]').trigger('click')
 
+    const wellMeetAgainCard = wrapper.findAll('.audio-card').find((card) => card.text().includes("We'll Meet Again"))
+
     expect(wrapper.text()).toContain("We'll Meet Again")
-    expect(wrapper.find('audio').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Archive record only')
-    expect(wrapper.text()).toContain('Open archive record')
+    expect(wellMeetAgainCard?.find('audio').exists()).toBe(false)
+    expect(wellMeetAgainCard?.text()).toContain('Archive record only')
+    expect(wellMeetAgainCard?.text()).toContain('Open archive record')
   })
 
   it('renders playable audio and falls back to archive copy after playback failure', async () => {
@@ -93,9 +96,10 @@ describe('AtlasDetailPanel', () => {
     expect(wrapper.text()).toContain('Playable audio')
     expect(wrapper.find('audio').exists()).toBe(true)
 
+    const audioCount = wrapper.findAll('audio').length
     await wrapper.find('audio').trigger('error')
 
-    expect(wrapper.find('audio').exists()).toBe(false)
+    expect(wrapper.findAll('audio').length).toBeLessThan(audioCount)
     expect(wrapper.text()).toContain('Playback failed. Open the original record instead.')
     expect(wrapper.text()).toContain('Open archive record')
   })
@@ -124,13 +128,33 @@ describe('AtlasDetailPanel', () => {
     })
 
     expect(wrapper.get('img').attributes('src')).toBe('/images/events/liberation-paris.webp')
+    expect(wrapper.get('figcaption').text()).toContain('Champs Elysees')
     expect(wrapper.get('[data-testid="event-music-impact"]').text()).toContain('jazz-club revival')
     expect(wrapper.get('[data-testid="event-related-songs"]').text()).toContain('La Marseillaise')
+    expect(wrapper.get('[data-testid="event-related-songs"]').text()).toContain('Context')
+    expect(wrapper.get('[data-testid="event-related-songs"]').text()).toContain('Event relation')
+    expect(wrapper.get('[data-testid="event-related-songs"]').text()).toContain('Listening guide')
+    expect(wrapper.get('[data-testid="event-related-songs"]').text()).toContain('Rights')
     expect(wrapper.find('audio').exists()).toBe(true)
+
+    const sourceAudioEvents: CustomEvent[] = []
+    const handler = (event: Event) => sourceAudioEvents.push(event as CustomEvent)
+    window.addEventListener(SOURCE_AUDIO_STATE_EVENT, handler)
+    await wrapper.find('audio').trigger('play')
+    window.removeEventListener(SOURCE_AUDIO_STATE_EVENT, handler)
+
+    expect(sourceAudioEvents.at(-1)?.detail.active).toBe(true)
+
+    const audioCount = wrapper.findAll('audio').length
+    await wrapper.find('audio').trigger('error')
+
+    expect(wrapper.findAll('audio')).toHaveLength(audioCount - 1)
+    expect(wrapper.text()).toContain('Playback failed. Use the source link instead.')
 
     await wrapper.get('[data-testid="tab-sources"]').trigger('click')
 
     expect(wrapper.text()).toContain('Related song')
+    expect(wrapper.text()).toContain('Internet Archive')
     expect(wrapper.text()).toContain('Public domain local playback')
   })
 

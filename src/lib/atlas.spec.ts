@@ -152,6 +152,15 @@ describe('atlas helpers', () => {
   })
 
   it('validates enhanced historic event storytelling assets', () => {
+    const allowedSensitivity = new Set(['neutral', 'patriotic', 'resistance', 'sensitive-context'])
+    const isValidPlayableEventSong = (streamUrl: string) => {
+      if (!streamUrl.startsWith('/audio/events/') && !streamUrl.startsWith('/audio/background/')) {
+        return false
+      }
+
+      return existsSync(join(process.cwd(), 'public', streamUrl.replace(/^\//, '')))
+    }
+
     expect(
       historicEvents.every((event) => {
         const imagePath = event.image?.src.replace(/^\//, '')
@@ -164,9 +173,30 @@ describe('atlas helpers', () => {
             event.relatedSongs &&
             event.relatedSongs.length >= 1 &&
             event.relatedSongs.length <= 3 &&
-            event.relatedSongs.every((song) => song.title && song.performer && song.year && song.noteZh && song.noteEn && song.sourceUrl && song.rightsLabel) &&
+            event.relatedSongs.every(
+              (song) =>
+                song.title &&
+                song.performer &&
+                song.year &&
+                song.noteZh &&
+                song.noteEn &&
+                song.contextZh &&
+                song.contextEn &&
+                song.eventRelationZh &&
+                song.eventRelationEn &&
+                song.listeningGuideZh &&
+                song.listeningGuideEn &&
+                song.sourceUrl &&
+                song.rightsLabel &&
+                song.sensitivity &&
+                allowedSensitivity.has(song.sensitivity) &&
+                (!song.streamUrl || isValidPlayableEventSong(song.streamUrl)) &&
+                (!song.streamUrl?.startsWith('/audio/events/') || song.audioCredit),
+            ) &&
             event.image?.altZh &&
             event.image.altEn &&
+            event.image.captionZh &&
+            event.image.captionEn &&
             event.image.credit &&
             event.image.sourceUrl &&
             event.image.licenseLabel &&

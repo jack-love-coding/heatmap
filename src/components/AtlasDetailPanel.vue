@@ -128,8 +128,28 @@ function getEventImageAlt(event: HistoricEvent) {
   return props.language === 'zh' ? event.image.altZh : event.image.altEn
 }
 
+function getEventImageCaption(event: HistoricEvent) {
+  if (!event.image) {
+    return ''
+  }
+
+  return props.language === 'zh' ? event.image.captionZh : event.image.captionEn
+}
+
 function getSongNote(song: RelatedSong) {
   return props.language === 'zh' ? song.noteZh : song.noteEn
+}
+
+function getSongContext(song: RelatedSong) {
+  return props.language === 'zh' ? song.contextZh : song.contextEn
+}
+
+function getSongEventRelation(song: RelatedSong) {
+  return props.language === 'zh' ? song.eventRelationZh : song.eventRelationEn
+}
+
+function getSongListeningGuide(song: RelatedSong) {
+  return props.language === 'zh' ? song.listeningGuideZh : song.listeningGuideEn
 }
 
 function getSongKey(song: RelatedSong) {
@@ -155,11 +175,27 @@ function getSongStatus(song: RelatedSong) {
 
   return song.streamUrl
     ? props.language === 'zh'
-      ? '可播放'
-      : 'Playable'
+      ? '本地播放'
+      : 'Local playback'
     : props.language === 'zh'
-      ? '资料链接'
-      : 'Source link'
+      ? '档案外链'
+      : 'Archive link'
+}
+
+function getSongSensitivityLabel(song: RelatedSong) {
+  if (song.sensitivity === 'sensitive-context') {
+    return props.language === 'zh' ? '敏感历史材料' : 'Sensitive historical material'
+  }
+
+  if (song.sensitivity === 'resistance') {
+    return props.language === 'zh' ? '抵抗歌曲' : 'Resistance song'
+  }
+
+  if (song.sensitivity === 'patriotic') {
+    return props.language === 'zh' ? '爱国/士气歌曲' : 'Patriotic / morale song'
+  }
+
+  return props.language === 'zh' ? '研究样本' : 'Research sample'
 }
 
 function getAudioStatusLabel(group: DetailSourceGroup) {
@@ -319,6 +355,7 @@ function handleSourceAudioStop(clipId: string) {
         <figure v-if="activeEvent.image" class="event-figure">
           <img :src="activeEvent.image.src" :alt="getEventImageAlt(activeEvent)" loading="lazy">
           <figcaption>
+            <span v-if="getEventImageCaption(activeEvent)" class="event-image-caption">{{ getEventImageCaption(activeEvent) }}</span>
             <span>{{ activeEvent.image.credit }}</span>
             <a :href="activeEvent.image.sourceUrl" target="_blank" rel="noreferrer">
               {{ language === 'zh' ? '图片来源' : 'Image source' }}
@@ -335,11 +372,26 @@ function handleSourceAudioStop(clipId: string) {
           <article v-for="song in activeEvent.relatedSongs" :key="getSongKey(song)" class="song-card">
             <div class="card-meta">
               <span class="meta-pill primary">{{ getSongStatus(song) }}</span>
+              <span class="meta-pill meta-pill--soft">{{ getSongSensitivityLabel(song) }}</span>
               <span>{{ song.year }}</span>
             </div>
             <h4>{{ song.title }}</h4>
             <p class="card-subtitle">{{ song.performer }}</p>
             <p class="card-copy">{{ getSongNote(song) }}</p>
+            <dl class="song-research">
+              <div v-if="getSongContext(song)">
+                <dt>{{ language === 'zh' ? '背景' : 'Context' }}</dt>
+                <dd>{{ getSongContext(song) }}</dd>
+              </div>
+              <div v-if="getSongEventRelation(song)">
+                <dt>{{ language === 'zh' ? '事件关系' : 'Event relation' }}</dt>
+                <dd>{{ getSongEventRelation(song) }}</dd>
+              </div>
+              <div v-if="getSongListeningGuide(song)">
+                <dt>{{ language === 'zh' ? '听觉提示' : 'Listening guide' }}</dt>
+                <dd>{{ getSongListeningGuide(song) }}</dd>
+              </div>
+            </dl>
             <audio
               v-if="canPlaySong(song)"
               class="audio-player"
@@ -351,9 +403,16 @@ function handleSourceAudioStop(clipId: string) {
               @ended="handleSourceAudioStop(getSongKey(song))"
               @error="handleRelatedSongError(song)"
             />
-            <a class="card-link" :href="song.sourceUrl" target="_blank" rel="noreferrer">
-              {{ language === 'zh' ? '打开歌曲来源' : 'Open song source' }}
-            </a>
+            <div class="audio-links">
+              <a class="card-link" :href="song.sourceUrl" target="_blank" rel="noreferrer">
+                {{ language === 'zh' ? '打开歌曲来源' : 'Open song source' }}
+              </a>
+              <a v-if="song.rightsUrl" class="card-link ghost" :href="song.rightsUrl" target="_blank" rel="noreferrer">
+                {{ language === 'zh' ? '权利说明' : 'Rights' }}
+              </a>
+            </div>
+            <p class="rights-copy">{{ song.rightsLabel }}</p>
+            <p v-if="song.audioCredit" class="rights-copy">{{ song.audioCredit }}</p>
           </article>
         </div>
         <div v-if="linkedArtists.length" class="linked-artist-list" data-testid="linked-artist-cards">
@@ -549,11 +608,26 @@ function handleSourceAudioStop(clipId: string) {
               <div class="card-meta">
                 <span class="meta-pill primary">{{ language === 'zh' ? '相关歌曲' : 'Related song' }}</span>
                 <span class="meta-pill meta-pill--soft">{{ getSongStatus(song) }}</span>
+                <span class="meta-pill meta-pill--soft">{{ getSongSensitivityLabel(song) }}</span>
                 <span>{{ song.year }}</span>
               </div>
               <h4>{{ song.title }}</h4>
               <p class="card-subtitle">{{ song.performer }}</p>
               <p class="card-copy">{{ getSongNote(song) }}</p>
+              <dl class="song-research">
+                <div v-if="getSongContext(song)">
+                  <dt>{{ language === 'zh' ? '背景' : 'Context' }}</dt>
+                  <dd>{{ getSongContext(song) }}</dd>
+                </div>
+                <div v-if="getSongEventRelation(song)">
+                  <dt>{{ language === 'zh' ? '事件关系' : 'Event relation' }}</dt>
+                  <dd>{{ getSongEventRelation(song) }}</dd>
+                </div>
+                <div v-if="getSongListeningGuide(song)">
+                  <dt>{{ language === 'zh' ? '听觉提示' : 'Listening guide' }}</dt>
+                  <dd>{{ getSongListeningGuide(song) }}</dd>
+                </div>
+              </dl>
               <audio
                 v-if="canPlaySong(song)"
                 class="audio-player"
@@ -574,6 +648,7 @@ function handleSourceAudioStop(clipId: string) {
                 </a>
               </div>
               <p class="rights-copy">{{ song.rightsLabel }}</p>
+              <p v-if="song.audioCredit" class="rights-copy">{{ song.audioCredit }}</p>
             </article>
           </div>
         </section>
@@ -810,6 +885,12 @@ function handleSourceAudioStop(clipId: string) {
   font-size: 0.72rem;
 }
 
+.event-image-caption {
+  flex-basis: 100%;
+  color: var(--atlas-muted);
+  line-height: 1.5;
+}
+
 .event-figure a {
   color: rgba(239, 228, 208, 0.78);
   text-decoration: none;
@@ -999,6 +1080,32 @@ function handleSourceAudioStop(clipId: string) {
 .audio-player {
   width: 100%;
   min-width: 0;
+}
+
+.song-research {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.song-research div {
+  display: grid;
+  gap: 0.18rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(239, 228, 208, 0.08);
+}
+
+.song-research dt {
+  color: var(--atlas-accent);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.song-research dd {
+  margin: 0;
+  color: var(--atlas-muted);
+  line-height: 1.5;
 }
 
 .archive-note {

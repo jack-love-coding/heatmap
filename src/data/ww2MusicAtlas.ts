@@ -39,6 +39,8 @@ export interface EventImage {
   src: string
   altZh: string
   altEn: string
+  captionZh?: string
+  captionEn?: string
   credit: string
   sourceUrl: string
   licenseLabel: string
@@ -46,16 +48,26 @@ export interface EventImage {
   generated: boolean
 }
 
+export type RelatedSongSensitivity = 'neutral' | 'patriotic' | 'resistance' | 'sensitive-context'
+
 export interface RelatedSong {
   title: string
   performer: string
   year: string
   noteZh: string
   noteEn: string
+  contextZh?: string
+  contextEn?: string
+  eventRelationZh?: string
+  eventRelationEn?: string
+  listeningGuideZh?: string
+  listeningGuideEn?: string
   sourceUrl: string
   streamUrl?: string
   rightsLabel: string
   rightsUrl?: string
+  sensitivity?: RelatedSongSensitivity
+  audioCredit?: string
 }
 
 export interface HistoricEvent {

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { defineAsyncComponent } from 'vue'
+import { defineAsyncComponent, ref } from 'vue'
 import { navigateTo } from '@/router'
 import { useAtlasState } from '@/composables/useAtlasState'
 import { getArtistRole, getCountryName, getEventTitle, getFeaturedArtistsForContext } from '@/lib/atlas'
+import { dispatchSourceAudioState } from '@/lib/audioBus'
 import type { HistoricEvent, RelatedSong } from '@/data/ww2MusicAtlas'
 
 const GlobeStage = defineAsyncComponent(() => import('@/components/GlobeStage.vue'))
 const atlas = useAtlasState()
+const audioFailures = ref<string[]>([])
 
 function openCountryPage() {
   navigateTo({
@@ -38,8 +40,86 @@ function getEventImageAlt(event: HistoricEvent) {
   return atlas.language.value === 'zh' ? event.image.altZh : event.image.altEn
 }
 
+function getEventImageCaption(event: HistoricEvent) {
+  if (!event.image) {
+    return ''
+  }
+
+  return atlas.language.value === 'zh' ? event.image.captionZh : event.image.captionEn
+}
+
 function getSongNote(song: RelatedSong) {
   return atlas.language.value === 'zh' ? song.noteZh : song.noteEn
+}
+
+function getSongContext(song: RelatedSong) {
+  return atlas.language.value === 'zh' ? song.contextZh : song.contextEn
+}
+
+function getSongEventRelation(song: RelatedSong) {
+  return atlas.language.value === 'zh' ? song.eventRelationZh : song.eventRelationEn
+}
+
+function getSongListeningGuide(song: RelatedSong) {
+  return atlas.language.value === 'zh' ? song.listeningGuideZh : song.listeningGuideEn
+}
+
+function getSongKey(song: RelatedSong) {
+  return `${song.title}:${song.year}`
+}
+
+function getSongStatus(song: RelatedSong) {
+  const songKey = getSongKey(song)
+
+  if (audioFailures.value.includes(songKey)) {
+    return atlas.language.value === 'zh' ? '播放失败，已切换到来源链接。' : 'Playback failed. Use the source link instead.'
+  }
+
+  return song.streamUrl
+    ? atlas.language.value === 'zh'
+      ? '本地播放'
+      : 'Local playback'
+    : atlas.language.value === 'zh'
+      ? '档案外链'
+      : 'Archive link'
+}
+
+function getSongSensitivityLabel(song: RelatedSong) {
+  if (song.sensitivity === 'sensitive-context') {
+    return atlas.language.value === 'zh' ? '敏感历史材料' : 'Sensitive historical material'
+  }
+
+  if (song.sensitivity === 'resistance') {
+    return atlas.language.value === 'zh' ? '抵抗歌曲' : 'Resistance song'
+  }
+
+  if (song.sensitivity === 'patriotic') {
+    return atlas.language.value === 'zh' ? '爱国/士气歌曲' : 'Patriotic / morale song'
+  }
+
+  return atlas.language.value === 'zh' ? '研究样本' : 'Research sample'
+}
+
+function canPlaySong(song: RelatedSong) {
+  return Boolean(song.streamUrl) && !audioFailures.value.includes(getSongKey(song))
+}
+
+function handleSongPlay(song: RelatedSong) {
+  dispatchSourceAudioState({ active: true, clipId: getSongKey(song) })
+}
+
+function handleSongStop(song: RelatedSong) {
+  dispatchSourceAudioState({ active: false, clipId: getSongKey(song) })
+}
+
+function handleSongError(song: RelatedSong) {
+  const songKey = getSongKey(song)
+
+  if (!audioFailures.value.includes(songKey)) {
+    audioFailures.value = [...audioFailures.value, songKey]
+  }
+
+  dispatchSourceAudioState({ active: false, clipId: songKey })
 }
 
 function getLinkedArtists() {
@@ -96,6 +176,7 @@ function getLinkedArtists() {
         <figure v-if="atlas.activeEvent.value.image" class="event-figure">
           <img :src="atlas.activeEvent.value.image.src" :alt="getEventImageAlt(atlas.activeEvent.value)" loading="lazy">
           <figcaption>
+            <span v-if="getEventImageCaption(atlas.activeEvent.value)" class="event-image-caption">{{ getEventImageCaption(atlas.activeEvent.value) }}</span>
             <span>{{ atlas.activeEvent.value.image.credit }}</span>
             <a :href="atlas.activeEvent.value.image.sourceUrl" target="_blank" rel="noreferrer">
               {{ atlas.language.value === 'zh' ? '图片来源' : 'Image source' }}
@@ -113,15 +194,46 @@ function getLinkedArtists() {
             <article v-for="song in atlas.activeEvent.value.relatedSongs" :key="`${song.title}-${song.year}`" class="song-card">
               <div class="song-meta">
                 <span>{{ song.year }}</span>
-                <span>{{ song.streamUrl ? (atlas.language.value === 'zh' ? '可播放' : 'Playable') : (atlas.language.value === 'zh' ? '资料链接' : 'Source link') }}</span>
+                <span>{{ getSongStatus(song) }}</span>
+                <span>{{ getSongSensitivityLabel(song) }}</span>
               </div>
               <h3>{{ song.title }}</h3>
               <p class="song-performer">{{ song.performer }}</p>
               <p>{{ getSongNote(song) }}</p>
-              <audio v-if="song.streamUrl" controls preload="none" :src="song.streamUrl" />
-              <a :href="song.sourceUrl" target="_blank" rel="noreferrer">
-                {{ atlas.language.value === 'zh' ? '打开歌曲来源' : 'Open song source' }}
-              </a>
+              <dl class="song-research">
+                <div v-if="getSongContext(song)">
+                  <dt>{{ atlas.language.value === 'zh' ? '背景' : 'Context' }}</dt>
+                  <dd>{{ getSongContext(song) }}</dd>
+                </div>
+                <div v-if="getSongEventRelation(song)">
+                  <dt>{{ atlas.language.value === 'zh' ? '事件关系' : 'Event relation' }}</dt>
+                  <dd>{{ getSongEventRelation(song) }}</dd>
+                </div>
+                <div v-if="getSongListeningGuide(song)">
+                  <dt>{{ atlas.language.value === 'zh' ? '听觉提示' : 'Listening guide' }}</dt>
+                  <dd>{{ getSongListeningGuide(song) }}</dd>
+                </div>
+              </dl>
+              <audio
+                v-if="canPlaySong(song)"
+                controls
+                preload="none"
+                :src="song.streamUrl"
+                @play="handleSongPlay(song)"
+                @pause="handleSongStop(song)"
+                @ended="handleSongStop(song)"
+                @error="handleSongError(song)"
+              />
+              <div class="audio-links">
+                <a :href="song.sourceUrl" target="_blank" rel="noreferrer">
+                  {{ atlas.language.value === 'zh' ? '打开歌曲来源' : 'Open song source' }}
+                </a>
+                <a v-if="song.rightsUrl" :href="song.rightsUrl" target="_blank" rel="noreferrer">
+                  {{ atlas.language.value === 'zh' ? '权利说明' : 'Rights' }}
+                </a>
+              </div>
+              <p class="rights-copy">{{ song.rightsLabel }}</p>
+              <p v-if="song.audioCredit" class="rights-copy">{{ song.audioCredit }}</p>
             </article>
           </div>
         </section>
@@ -223,6 +335,12 @@ p {
   font-size: 0.76rem;
 }
 
+.event-image-caption {
+  flex-basis: 100%;
+  color: var(--atlas-muted);
+  line-height: 1.5;
+}
+
 .event-figure a,
 .song-card a {
   width: fit-content;
@@ -294,6 +412,44 @@ p {
 
 .song-card audio {
   width: 100%;
+}
+
+.song-research {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.song-research div {
+  display: grid;
+  gap: 0.2rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(239, 228, 208, 0.08);
+}
+
+.song-research dt {
+  color: var(--atlas-accent);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.song-research dd {
+  margin: 0;
+  color: var(--atlas-muted);
+  line-height: 1.5;
+}
+
+.audio-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.rights-copy {
+  color: rgba(239, 228, 208, 0.54);
+  font-size: 0.75rem;
+  line-height: 1.45;
 }
 
 .event-index {
