@@ -29,13 +29,13 @@ function isLayerEnabled(layer: LayerKey) {
   <section class="controls" data-testid="atlas-controls">
     <p class="kicker">WWII MUSIC ATLAS</p>
     <h1 class="title">
-      {{ language === 'zh' ? '战争如何改变音乐地图' : 'How War Rewired the Musical Map' }}
+      {{ language === 'zh' ? '咆哮的40年代--音乐如何在战争中演变' : 'The Roaring Forties -- How Music Evolved in War' }}
     </h1>
     <p class="lede">
       {{
         language === 'zh'
-          ? '以地球、时间轴和关键事件追踪 1931-1949 年间八个国家的音乐风格转向。'
-          : 'Track how eight countries changed musically between 1931 and 1949 through globe, timeline, and historical rupture.'
+          ? '作为二战音乐爱好者，我总想知道军歌、爵士广播、流亡作曲家和战后唱片之间究竟如何相互牵动。这个项目把 1931-1949 年的关键事件、国家风格和代表音乐家放在同一张地图上，追踪音乐如何穿过战场、广播、迁徙与记忆，最终改变战后的声音语言。'
+          : 'Built from the curiosity of a WWII music listener, this atlas asks how marches, jazz broadcasts, exiled composers, and postwar records shaped one another. It places 1931-1949 events, national styles, and featured musicians on one map to trace how music moved through battlefields, radio, migration, and memory.'
       }}
     </p>
 

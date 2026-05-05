@@ -216,13 +216,13 @@ onBeforeUnmount(() => {
       </div>
 
       <aside class="story-panel" data-testid="home-story-panel">
-        <p class="kicker">WWII MUSIC ATLAS</p>
-        <h1>{{ atlas.language.value === 'zh' ? '战争如何改变音乐地图' : 'How War Rewired the Musical Map' }}</h1>
+        <p class="kicker">{{ atlas.language.value === 'zh' ? '咆哮的40年代' : 'ROARING FORTIES' }}</p>
+        <h1>{{ atlas.language.value === 'zh' ? '咆哮的40年代--音乐如何在战争中演变' : 'The Roaring Forties -- How Music Evolved in War' }}</h1>
         <p class="project-intro">
           {{
             atlas.language.value === 'zh'
-              ? '以地球、时间轴和关键事件追踪 1931-1949 年间八个国家的音乐风格转向。'
-              : 'Track how eight countries changed musically between 1931 and 1949 through globe, timeline, and historical rupture.'
+              ? '作为二战音乐爱好者，我总想知道军歌、爵士广播、流亡作曲家和战后唱片之间究竟如何相互牵动。这个项目把 1931-1949 年的关键事件、国家风格和代表音乐家放在同一张地图上，追踪音乐如何穿过战场、广播、迁徙与记忆，最终改变战后的声音语言。'
+              : 'Built from the curiosity of a WWII music listener, this atlas asks how marches, jazz broadcasts, exiled composers, and postwar records shaped one another. It places 1931-1949 events, national styles, and featured musicians on one map to trace how music moved through battlefields, radio, migration, and memory.'
           }}
         </p>
 
@@ -453,7 +453,7 @@ onBeforeUnmount(() => {
   display: grid;
   align-items: start;
   min-height: 100svh;
-  padding: 5.8rem 1.2rem 2rem;
+  padding: 5.8rem clamp(1rem, 2vw, 1.4rem) 2rem;
   overflow: hidden;
 }
 
@@ -483,7 +483,7 @@ onBeforeUnmount(() => {
 }
 
 .story-panel {
-  width: min(23.5rem, calc(100vw - 2rem));
+  width: min(25rem, calc(100vw - 2rem));
   max-height: calc(100svh - 6.9rem);
   margin: 0;
   padding: 1rem;
@@ -525,9 +525,10 @@ h2 {
 }
 
 h1 {
-  max-width: 10ch;
+  max-width: 11.5em;
   margin-top: 0.45rem;
-  font-size: clamp(2.05rem, 3.6vw, 3.8rem);
+  font-size: clamp(1.9rem, 2.7vw, 3.15rem);
+  overflow-wrap: anywhere;
 }
 
 h2 {
@@ -1114,7 +1115,57 @@ p {
   padding: 0.58rem 0.8rem;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
+  .home-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 0.9fr);
+    gap: 1rem;
+    min-height: auto;
+    padding: 8.6rem 1rem 1rem;
+    overflow: visible;
+    background:
+      radial-gradient(circle at 50% 6rem, rgba(201, 143, 88, 0.12), transparent 24rem),
+      linear-gradient(180deg, rgba(7, 10, 15, 0.96), rgba(9, 14, 20, 0.82));
+  }
+
+  .hero-stage {
+    position: relative;
+    z-index: 1;
+    grid-column: 1 / -1;
+    height: clamp(22rem, 45svh, 32rem);
+    min-height: 22rem;
+    overflow: hidden;
+  }
+
+  .story-panel,
+  .event-rail,
+  .event-preview {
+    width: 100%;
+    max-width: none;
+  }
+
+  .story-panel {
+    max-height: none;
+  }
+
+  .event-rail,
+  .event-preview {
+    position: relative;
+    top: auto;
+    right: auto;
+    bottom: auto;
+    left: auto;
+  }
+
+  .event-rail {
+    max-height: 34rem;
+  }
+
+  .event-preview {
+    grid-column: 1 / -1;
+    justify-self: start;
+    max-width: 36rem;
+  }
+
   .home-docks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1126,33 +1177,39 @@ p {
 
 @media (max-width: 900px) {
   .home-hero {
-    gap: 0.75rem;
-    overflow: visible;
+    grid-template-columns: 1fr;
+    padding-top: 8.6rem;
   }
 
-  .event-rail,
-  .event-preview {
-    position: relative;
-    top: auto;
-    right: auto;
-    bottom: auto;
-    width: min(100%, 36rem);
+  .hero-stage {
+    height: clamp(18rem, 42svh, 26rem);
+    min-height: 18rem;
   }
 
   .event-rail {
-    max-height: 34rem;
+    max-height: 30rem;
   }
 
-  .event-preview {
-    order: 3;
+  .home-docks {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+    padding: 0.9rem 1rem 1.2rem;
+  }
+
+  .artist-dock {
+    grid-column: auto;
   }
 }
 
 @media (max-width: 760px) {
   .home-hero {
     align-items: start;
-    min-height: auto;
-    padding: 9.8rem 0.75rem 1rem;
+    padding: 8.8rem 0.75rem 1rem;
+  }
+
+  .hero-stage {
+    height: clamp(16rem, 38svh, 22rem);
+    min-height: 16rem;
   }
 
   .story-panel {
@@ -1162,8 +1219,9 @@ p {
   }
 
   h1 {
-    max-width: 11ch;
-    font-size: clamp(2rem, 11vw, 2.85rem);
+    max-width: none;
+    font-size: clamp(1.65rem, 8.8vw, 2.45rem);
+    line-height: 1.04;
   }
 
   .chapter-strip {

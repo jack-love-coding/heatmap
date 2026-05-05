@@ -17,7 +17,7 @@ describe('AtlasControls', () => {
       },
     })
 
-    expect(wrapper.text()).toContain('战争如何改变音乐地图')
+    expect(wrapper.text()).toContain('咆哮的40年代--音乐如何在战争中演变')
 
     await wrapper.get('[data-testid="language-en"]').trigger('click')
 

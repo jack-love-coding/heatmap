@@ -33,8 +33,8 @@ function linkHref(path: AtlasRoutePath) {
   <div class="app-shell">
     <header class="site-nav">
       <button class="brand" type="button" @click="openPath('/')">
-        <span>WWII MUSIC ATLAS</span>
-        <strong>{{ atlas.language.value === 'zh' ? '二战音乐地图' : 'World War II Music Atlas' }}</strong>
+        <span>{{ atlas.language.value === 'zh' ? '咆哮的40年代' : 'ROARING FORTIES' }}</span>
+        <strong>{{ atlas.language.value === 'zh' ? '咆哮的40年代--音乐如何在战争中演变' : 'The Roaring Forties -- Music in Wartime' }}</strong>
       </button>
 
       <nav class="nav-links" aria-label="Main navigation">
@@ -93,6 +93,8 @@ function linkHref(path: AtlasRoutePath) {
   display: grid;
   gap: 0.1rem;
   justify-self: start;
+  min-width: 0;
+  max-width: 28rem;
   padding: 0;
   text-align: left;
 }
@@ -107,6 +109,8 @@ function linkHref(path: AtlasRoutePath) {
   font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
   font-size: 1.05rem;
   font-weight: 600;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .nav-links {
@@ -143,13 +147,48 @@ function linkHref(path: AtlasRoutePath) {
 
 @media (max-width: 760px) {
   .site-nav {
-    grid-template-columns: 1fr;
-    gap: 0.65rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.6rem;
     padding: 0.7rem;
   }
 
-  .nav-links,
+  .brand strong {
+    font-size: 0.95rem;
+    display: -webkit-box;
+    overflow: hidden;
+    line-clamp: 2;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .nav-links {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    overflow-x: auto;
+  }
+
   .nav-actions {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    justify-self: end;
+  }
+
+  .nav-links a {
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1180px) {
+  .site-nav {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .nav-links {
+    grid-column: 1 / -1;
+    grid-row: 2;
     justify-self: stretch;
     overflow-x: auto;
   }
@@ -158,6 +197,11 @@ function linkHref(path: AtlasRoutePath) {
     flex: 1;
     text-align: center;
     white-space: nowrap;
+  }
+
+  .nav-actions {
+    grid-column: 2;
+    grid-row: 1;
   }
 }
 </style>
