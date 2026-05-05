@@ -167,9 +167,13 @@ describe('atlas helpers', () => {
 
         return Boolean(
           event.longDescriptionZh?.trim() &&
+            event.longDescriptionZh.length >= 90 &&
             event.longDescriptionEn?.trim() &&
+            event.longDescriptionEn.length >= 140 &&
             event.musicImpactZh?.trim() &&
+            event.musicImpactZh.length >= 50 &&
             event.musicImpactEn?.trim() &&
+            event.musicImpactEn.length >= 100 &&
             event.relatedSongs &&
             event.relatedSongs.length >= 1 &&
             event.relatedSongs.length <= 3 &&
@@ -190,8 +194,9 @@ describe('atlas helpers', () => {
                 song.rightsLabel &&
                 song.sensitivity &&
                 allowedSensitivity.has(song.sensitivity) &&
-                (!song.streamUrl || isValidPlayableEventSong(song.streamUrl)) &&
-                (!song.streamUrl?.startsWith('/audio/events/') || song.audioCredit),
+                song.streamUrl &&
+                isValidPlayableEventSong(song.streamUrl) &&
+                (!song.streamUrl.startsWith('/audio/events/') || song.audioCredit),
             ) &&
             event.image?.altZh &&
             event.image.altEn &&
@@ -205,6 +210,9 @@ describe('atlas helpers', () => {
         )
       }),
     ).toBe(true)
+
+    expect(historicEvents).toHaveLength(13)
+    expect(historicEvents.reduce((count, event) => count + (event.relatedSongs?.length ?? 0), 0)).toBe(39)
   })
 
   it('validates chapter evidence copy and generated thumbnail assets', () => {

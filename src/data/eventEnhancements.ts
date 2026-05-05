@@ -25,6 +25,7 @@ function song(input: RelatedSong): RelatedSong {
 
   return {
     ...input,
+    sourceUrl: localAudio?.sourceUrl ?? input.sourceUrl,
     contextZh: input.contextZh ?? studyNote?.contextZh ?? input.noteZh,
     contextEn: input.contextEn ?? studyNote?.contextEn ?? input.noteEn,
     eventRelationZh: input.eventRelationZh ?? studyNote?.eventRelationZh ?? input.noteZh,
@@ -46,13 +47,54 @@ const commonsLicense = 'https://commons.wikimedia.org/wiki/Commons:Licensing'
 const archiveRights = 'https://help.archive.org/help/rights/'
 const researchUseRightsLabel = 'Internet Archive local playback; research-use rights unverified'
 
-const eventAudioByTitle: Record<string, Pick<RelatedSong, 'streamUrl' | 'rightsLabel' | 'rightsUrl' | 'sensitivity' | 'audioCredit'>> = {
+const eventAudioByTitle: Record<
+  string,
+  Pick<RelatedSong, 'streamUrl' | 'rightsLabel' | 'rightsUrl' | 'sensitivity' | 'audioCredit'> & { sourceUrl?: string }
+> = {
+  'March of the Volunteers': {
+    streamUrl: '/audio/events/march-of-the-volunteers.mp3',
+    sourceUrl: 'https://archive.org/details/us-navy-band-national-anthems-public-domain',
+    rightsLabel: 'U.S. Navy Band local playback; public-domain U.S. government recording',
+    rightsUrl: 'https://www.navyband.navy.mil/national-anthems/',
+    sensitivity: 'resistance',
+    audioCredit: 'Internet Archive item us-navy-band-national-anthems-public-domain, Current/China.mp3; modern instrumental anthem recording, not a 1935 film-song recording',
+  },
+  'Song of the Great Wall': {
+    streamUrl: '/audio/events/song-of-the-great-wall.mp3',
+    sourceUrl: 'https://archive.org/details/lp_popular-chinese-classics-vol-2_hong-kong-philharmonic-orchestra-kennet',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'resistance',
+    audioCredit: 'Internet Archive LP Popular Chinese Classics Vol. 2; orchestral concert version used as a historical-near educational recording',
+  },
   'Aikoku Koshinkyoku': {
     streamUrl: '/audio/events/aikoku-koshinkyoku.mp3',
     rightsLabel: researchUseRightsLabel,
     rightsUrl: archiveRights,
     sensitivity: 'sensitive-context',
     audioCredit: 'Internet Archive item TaiatariSeishin',
+  },
+  'Mack the Knife': {
+    streamUrl: '/audio/events/mack-the-knife.mp3',
+    sourceUrl: 'https://archive.org/details/kurt-weill-bertolt-brecht-the-original-threepenny-opera-die-dreigroschenoper-deu',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive item The Original Threepenny Opera, track Moritat von Mackie Messer',
+  },
+  'Lili Marleen': {
+    streamUrl: '/audio/events/lili-marleen.mp3',
+    sourceUrl: 'https://archive.org/details/78_unter-der-laterne-lili-marleen-lied-eines-jungen-wachtpostens_lale-andersen-han_gbia0125670a',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Lale Andersen, Unter der Laterne / Lili Marleen',
+  },
+  'Faccetta Nera': {
+    streamUrl: '/audio/events/faccetta-nera.mp3',
+    sourceUrl: 'https://archive.org/details/banda-polydor-faccetta-nera-marcia-brunswick-6275-gr-58320',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'sensitive-context',
+    audioCredit: 'Internet Archive 78 rpm transfer, Banda Polydor - Faccetta Nera (Marcia); sensitive colonial propaganda material',
   },
   'Bella Ciao': {
     streamUrl: '/audio/events/bella-ciao.mp3',
@@ -61,6 +103,38 @@ const eventAudioByTitle: Record<string, Pick<RelatedSong, 'streamUrl' | 'rightsL
     sensitivity: 'resistance',
     audioCredit: 'Internet Archive item bella-ciao_202210',
   },
+  'Horst-Wessel-Lied': {
+    streamUrl: '/audio/events/horst-wessel-lied.mp3',
+    sourceUrl: 'https://archive.org/details/lp_war-songs-of-the-third-reich-historical-ge_unknown-artist',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'sensitive-context',
+    audioCredit: 'Internet Archive LP War Songs of the Third Reich, historical record; sensitive Nazi ceremonial material',
+  },
+  "We'll Meet Again": {
+    streamUrl: '/audio/events/well-meet-again.mp3',
+    sourceUrl: 'https://archive.org/details/well-meet-again_202511',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'patriotic',
+    audioCredit: 'Internet Archive item well-meet-again_202511; historical-near educational playback',
+  },
+  'Katyusha': {
+    streamUrl: '/audio/events/katyusha.mp3',
+    sourceUrl: 'https://archive.org/details/78_katiusha_v.-batischev-p.-mikhailov-v.-tiutiunik-state-jazz-orch.-u.-s.-s.-r.-m.-bla_gbia0007524a',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'patriotic',
+    audioCredit: 'Internet Archive 78 rpm transfer, Katiusha, State Jazz Orchestra of the U.S.S.R., 1939',
+  },
+  'Boogie Woogie Bugle Boy': {
+    streamUrl: '/audio/events/boogie-woogie-bugle-boy.mp3',
+    sourceUrl: 'https://archive.org/details/78_boogie-woogie-bugle-boy-woody-herman-his-orchestra-vocal-chorus-by-woody',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'patriotic',
+    audioCredit: 'Internet Archive 78 rpm transfer, Woody Herman & His Orchestra; same-song historical-near version rather than the Andrews Sisters recording',
+  },
   'Coming in on a Wing and a Prayer': {
     streamUrl: '/audio/events/coming-in-on-a-wing-and-a-prayer.mp3',
     rightsLabel: researchUseRightsLabel,
@@ -68,12 +142,35 @@ const eventAudioByTitle: Record<string, Pick<RelatedSong, 'streamUrl' | 'rightsL
     sensitivity: 'patriotic',
     audioCredit: 'Internet Archive V-Discs 1-99',
   },
+  'The Blue Scarf': {
+    streamUrl: '/audio/events/the-blue-scarf.mp3',
+    sourceUrl: 'https://archive.org/details/klavdija-shuljzhenko-pesni-o-ljubi_202601',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'patriotic',
+    audioCredit: 'Internet Archive item Klavdiya Shulzhenko - Pesni o lyubvi, track Siniy Platochek; later recording used for educational identification of the wartime song',
+  },
+  'Dark Night': {
+    streamUrl: '/audio/events/dark-night.mp3',
+    sourceUrl: 'https://archive.org/details/20210814_20210814_0956',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    sensitivity: 'patriotic',
+    audioCredit: 'Internet Archive Mark Bernes collection, track Tyomnaya noch; archive item used as historical-near playback',
+  },
   'Fischia il vento': {
     streamUrl: '/audio/events/fischia-il-vento.ogg',
     rightsLabel: researchUseRightsLabel,
     rightsUrl: archiveRights,
     sensitivity: 'resistance',
     audioCredit: 'Internet Archive item ror-katyusha-fischiailvento-x4ab8sev',
+  },
+  'La Vie en rose': {
+    streamUrl: '/audio/events/la-vie-en-rose.mp3',
+    sourceUrl: 'https://archive.org/details/78_la-vie-en-rose_edith-piaf-louiguy-guy-luypaerts_gbia0100798a_item',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Edith Piaf, La vie en rose',
   },
   'Fleur de Paris': {
     streamUrl: '/audio/events/fleur-de-paris.mp3',
@@ -87,6 +184,34 @@ const eventAudioByTitle: Record<string, Pick<RelatedSong, 'streamUrl' | 'rightsL
     rightsUrl: archiveRights,
     sensitivity: 'patriotic',
     audioCredit: 'Internet Archive LP World War II Songs in Hi-Fi',
+  },
+  'Ringo no Uta': {
+    streamUrl: '/audio/events/ringo-no-uta.mp3',
+    sourceUrl: 'https://archive.org/details/78_title-in-japanese_gbia0035328a',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Ringo No Uta / The Song of the Apple',
+  },
+  'Tokyo Boogie-Woogie': {
+    streamUrl: '/audio/events/tokyo-boogie-woogie.mp3',
+    sourceUrl: 'https://archive.org/details/78_tokyo-boogie-woogie_gbia0543885b',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Tokyo Boogie Woogie',
+  },
+  'Nature Boy': {
+    streamUrl: '/audio/events/nature-boy.mp3',
+    sourceUrl: 'https://archive.org/details/78_0262-Nature-boy',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Raquel Rastenni / Kai Mortensen; same-song historical-near version rather than Nat King Cole recording',
+  },
+  'Ornithology': {
+    streamUrl: '/audio/events/ornithology.mp3',
+    sourceUrl: 'https://archive.org/details/78_orinthology_charlie-parker-septet-charlie-parker-lucky-thompson-miles-davis-dodo-ma_gbia0344030b',
+    rightsLabel: researchUseRightsLabel,
+    rightsUrl: archiveRights,
+    audioCredit: 'Internet Archive 78 rpm transfer, Charlie Parker Septet with Miles Davis, Ornithology; used as the bebop evidence item replacing Move because no stable downloadable Move source was found',
   },
   'J’attendrai': {
     streamUrl: '/audio/events/jattendrai.mp3',
@@ -342,6 +467,14 @@ const songStudyNotes: Record<
     listeningGuideZh: '注意低声线、弦乐色彩和个人化叙事。',
     listeningGuideEn: 'Listen for low vocal color, strings, and intimate narration.',
   },
+  'Ornithology': {
+    contextZh: '比波普代表曲目之一，以查理·帕克体系中的快速和声转换和即兴语汇展示战后美国爵士的新现代性。',
+    contextEn: 'A representative bebop line from the Charlie Parker circle, showing postwar U.S. jazz modernity through fast harmonic motion and improvisational vocabulary.',
+    eventRelationZh: '它替代未能稳定取得音频的《Move》，用于说明马歇尔时代美国爵士如何通过唱片、俱乐部和驻军文化进入欧洲听觉想象。',
+    eventRelationEn: 'It replaces Move, for which no stable downloadable source was found, and shows how American jazz entered European listening through records, clubs, and troop culture.',
+    listeningGuideZh: '注意急速主题、切分重音和铜管/萨克斯即兴线条如何区别于战时大乐队娱乐。',
+    listeningGuideEn: 'Listen for the rapid head, syncopated accents, and brass/saxophone lines that distinguish bebop from wartime big-band entertainment.',
+  },
   'God Bless America': {
     contextZh: '美国公共音乐中的爱国曲目，在战时和战后广播中都具有强烈识别度。',
     contextEn: 'A highly recognizable U.S. patriotic public song across wartime and postwar broadcasting.',
@@ -353,7 +486,7 @@ const songStudyNotes: Record<
   },
 }
 
-export const eventEnhancementsById: Record<string, EventEnhancement> = {
+const baseEventEnhancementsById: Record<string, EventEnhancement> = {
   'mukden-incident': {
     longDescriptionZh:
       '九一八事变让东北亚的战争秩序提前成形。日本占领东北后，城市娱乐、电影歌曲和唱片网络被更强的殖民行政、新闻审查与军事宣传包围；中国音乐人和文化机构则开始把“流亡”“救亡”“民族共同体”写入歌曲生产。',
@@ -932,13 +1065,14 @@ export const eventEnhancementsById: Record<string, EventEnhancement> = {
         rightsUrl: archiveRights,
       }),
       song({
-        title: 'Move',
-        performer: 'Denzil Best / Miles Davis nonet repertoire',
-        year: '1949',
-        noteZh: '比波普和冷爵士语汇显示美国爵士在战后欧洲俱乐部和唱片圈的新影响。',
-        noteEn: 'Bebop and cool-jazz vocabulary point to the new influence of American jazz in postwar European clubs and records.',
-        sourceUrl: 'https://www.loc.gov/research-centers/recorded-sound/collections/',
-        rightsLabel: 'Archive gateway reference only',
+        title: 'Ornithology',
+        performer: 'Charlie Parker Septet with Miles Davis',
+        year: '1946 / bebop circulation',
+        noteZh: '以可播放的比波普 78 转录音替代缺少稳定下载源的《Move》，继续呈现战后美国爵士在欧洲俱乐部和唱片圈的新影响。',
+        noteEn: 'Uses a playable bebop 78 transfer in place of Move, whose stable download source could not be confirmed, while preserving the point about postwar U.S. jazz influence.',
+        sourceUrl: 'https://archive.org/details/78_orinthology_charlie-parker-septet-charlie-parker-lucky-thompson-miles-davis-dodo-ma_gbia0344030b',
+        rightsLabel: researchUseRightsLabel,
+        rightsUrl: archiveRights,
       }),
     ],
     image: image({
@@ -1001,3 +1135,17 @@ export const eventEnhancementsById: Record<string, EventEnhancement> = {
     }),
   },
 }
+
+function withResearchFrame(event: EventEnhancement): EventEnhancement {
+  return {
+    ...event,
+    longDescriptionZh: `${event.longDescriptionZh ?? ''} 从教育研究角度看，本事件页同时追踪制度、媒介和听众三条线索：谁在组织音乐，音乐经由广播、唱片、电影或集会如何传播，以及听众如何把它理解为动员、安慰、抵抗或重建的声音证据。`,
+    longDescriptionEn: `${event.longDescriptionEn ?? ''} As an education-research entry, this event also tracks three linked questions: who organized the music, how it circulated through radio, records, film, rallies, or troops, and how listeners heard it as mobilization, comfort, resistance, or reconstruction.`,
+    musicImpactZh: `${event.musicImpactZh ?? ''} 因此这里的歌曲不是背景点缀，而是用来观察当时音乐功能、风格转向、传播渠道和政治社会语境之间关系的可听材料。`,
+    musicImpactEn: `${event.musicImpactEn ?? ''} The songs are therefore treated as audible evidence rather than decoration, showing how musical function, style change, circulation, and political-social context interacted at the time.`,
+  }
+}
+
+export const eventEnhancementsById: Record<string, EventEnhancement> = Object.fromEntries(
+  Object.entries(baseEventEnhancementsById).map(([eventId, event]) => [eventId, withResearchFrame(event)]),
+) as Record<string, EventEnhancement>
