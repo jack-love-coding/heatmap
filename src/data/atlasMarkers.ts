@@ -46,14 +46,51 @@ export interface ArtistMarker {
   audioClipIds?: string[]
 }
 
-const generatedPortrait: ArtistPortrait = {
-  src: publicAssetPath('/images/artists/generated-archive-musician.png'),
-  altZh: '生成式档案风格音乐家资料图',
-  altEn: 'Generated archival-style musician portrait placeholder',
-  credit: 'Generated with OpenAI image generation for this project',
-  sourceUrl: 'generated:imagegen:archival-musician-placeholder',
-  licenseLabel: 'Generated project asset; not a historical photograph',
-  generated: true,
+const sourcedPortraitLicenseLabel = 'Wikimedia Commons image; see source page for rights'
+const generatedPortraitLicenseLabel = 'Generated project asset; not a historical photograph'
+
+function commonsFilePage(fileName: string) {
+  return `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName.replace(/ /g, '_'))}`
+}
+
+function sourcedPortrait(input: {
+  fileName: string
+  commonsFile: string
+  altZh: string
+  altEn: string
+  credit?: string
+  licenseLabel?: string
+  licenseUrl?: string
+  sourceUrl?: string
+}): ArtistPortrait {
+  const { fileName, commonsFile, credit, licenseLabel, sourceUrl, ...metadata } = input
+
+  return {
+    src: publicAssetPath(`/images/artists/${fileName}`),
+    ...metadata,
+    credit: credit ?? `Wikimedia Commons: ${commonsFile}`,
+    sourceUrl: sourceUrl ?? commonsFilePage(commonsFile),
+    licenseLabel: licenseLabel ?? sourcedPortraitLicenseLabel,
+    generated: false,
+  }
+}
+
+function generatedPortrait(input: {
+  fileName: string
+  altZh: string
+  altEn: string
+}): ArtistPortrait {
+  const id = input.fileName.replace(/\.webp$/, '')
+
+  return {
+    src: publicAssetPath(`/images/artists/${input.fileName}`),
+    altZh: input.altZh,
+    altEn: input.altEn,
+    credit: 'Generated with OpenAI image generation for this project',
+    sourceUrl: `generated:imagegen:${id}`,
+    licenseLabel: generatedPortraitLicenseLabel,
+    generated: true,
+  }
 }
 
 function work(input: ArtistWork): ArtistWork {
@@ -62,10 +99,6 @@ function work(input: ArtistWork): ArtistWork {
   }
 
   return input
-}
-
-function portrait(altZh: string, altEn: string): ArtistPortrait {
-  return { ...generatedPortrait, altZh, altEn }
 }
 
 export const artistMarkers: ArtistMarker[] = [
@@ -102,7 +135,12 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['europe-war', 'pearl-harbor'],
     linkedPhaseKeys: ['us:1931', 'us:1939'],
-    portrait: portrait('本尼·古德曼资料卡占位图', 'Benny Goodman dossier placeholder'),
+    portrait: sourcedPortrait({
+      fileName: 'benny-goodman.webp',
+      commonsFile: 'Benny_Goodman_1942.jpg',
+      altZh: 'Portrait of Benny Goodman',
+      altEn: 'Portrait of Benny Goodman',
+    }),
   },
   {
     id: 'andrews-sisters',
@@ -137,7 +175,12 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['pearl-harbor', 'marshall-broadcast'],
     linkedPhaseKeys: ['us:1939'],
-    portrait: portrait('安德鲁斯姐妹资料卡占位图', 'The Andrews Sisters dossier placeholder'),
+    portrait: sourcedPortrait({
+      fileName: 'andrews-sisters.webp',
+      commonsFile: 'Andrews_Sisters_Billboard_4.jpg',
+      altZh: 'Group portrait of The Andrews Sisters',
+      altEn: 'Group portrait of The Andrews Sisters',
+    }),
   },
   {
     id: 'glenn-miller',
@@ -173,7 +216,12 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['pearl-harbor', 'germany-surrender', 'marshall-broadcast'],
     linkedPhaseKeys: ['us:1939', 'us:1946'],
     sourceIds: ['loc-recorded-sound', 'loc-soundtrack-wwii'],
-    portrait: portrait('格伦·米勒资料卡占位图', 'Glenn Miller dossier placeholder'),
+    portrait: sourcedPortrait({
+      fileName: 'glenn-miller.webp',
+      commonsFile: 'Glenn_Miller_Billboard.jpg',
+      altZh: 'Portrait of Glenn Miller',
+      altEn: 'Portrait of Glenn Miller',
+    }),
   },
   {
     id: 'vera-lynn',
@@ -209,7 +257,12 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['europe-war', 'germany-surrender'],
     linkedPhaseKeys: ['uk:1939'],
-    portrait: portrait('薇拉·琳恩资料卡占位图', 'Vera Lynn dossier placeholder'),
+    portrait: sourcedPortrait({
+      fileName: 'vera-lynn.webp',
+      commonsFile: 'Dame_Vera_Lynn_4_Allan_Warren.jpg',
+      altZh: 'Portrait of Vera Lynn',
+      altEn: 'Portrait of Vera Lynn',
+    }),
   },
   {
     id: 'gracie-fields',
@@ -245,7 +298,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['europe-war'],
     linkedPhaseKeys: ['uk:1931', 'uk:1939'],
     sourceIds: ['iwm-sound', 'britannica-vera-lynn'],
-    portrait: portrait('格雷西·菲尔兹资料卡占位图', 'Gracie Fields dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'gracie-fields.webp',
+      altZh: 'Generated portrait of Gracie Fields',
+      altEn: 'Generated portrait of Gracie Fields',
+    }),
   },
   {
     id: 'noel-coward',
@@ -281,7 +338,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['europe-war', 'germany-surrender'],
     linkedPhaseKeys: ['uk:1939'],
     sourceIds: ['iwm-sound', 'britannica-world-war-ii'],
-    portrait: portrait('诺埃尔·考沃德资料卡占位图', 'Noel Coward dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'noel-coward.webp',
+      altZh: 'Generated portrait of Noel Coward',
+      altEn: 'Generated portrait of Noel Coward',
+    }),
   },
   {
     id: 'kurt-weill',
@@ -316,7 +377,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['reich-chamber'],
     linkedPhaseKeys: ['de:1931'],
-    portrait: portrait('库尔特·魏尔资料卡占位图', 'Kurt Weill dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'kurt-weill.webp',
+      altZh: 'Generated portrait of Kurt Weill',
+      altEn: 'Generated portrait of Kurt Weill',
+    }),
   },
   {
     id: 'lale-andersen',
@@ -344,7 +409,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['reich-chamber', 'europe-war', 'germany-surrender'],
     linkedPhaseKeys: ['de:1936', 'de:1944'],
-    portrait: portrait('拉蕾·安德森资料卡占位图', 'Lale Andersen dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'lale-andersen.webp',
+      altZh: 'Generated portrait of Lale Andersen',
+      altEn: 'Generated portrait of Lale Andersen',
+    }),
   },
   {
     id: 'zarah-leander',
@@ -380,7 +449,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['rome-berlin-axis', 'stalingrad'],
     linkedPhaseKeys: ['de:1936'],
     sourceIds: ['ushmm-degenerate-art', 'britannica-world-war-ii'],
-    portrait: portrait('莎拉·莱安德资料卡占位图', 'Zarah Leander dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'zarah-leander.webp',
+      altZh: 'Generated portrait of Zarah Leander',
+      altEn: 'Generated portrait of Zarah Leander',
+    }),
   },
   {
     id: 'klavdiya-shulzhenko',
@@ -408,7 +481,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['barbarossa', 'stalingrad'],
     linkedPhaseKeys: ['su:1939'],
-    portrait: portrait('克拉夫季娅·舒尔任科资料卡占位图', 'Klavdiya Shulzhenko dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'klavdiya-shulzhenko.webp',
+      altZh: 'Generated portrait of Klavdiya Shulzhenko',
+      altEn: 'Generated portrait of Klavdiya Shulzhenko',
+    }),
   },
   {
     id: 'alexander-alexandrov',
@@ -444,7 +521,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['barbarossa', 'stalingrad', 'germany-surrender'],
     linkedPhaseKeys: ['su:1931', 'su:1939'],
     sourceIds: ['britannica-russia-music', 'britannica-barbarossa'],
-    portrait: portrait('亚历山大·亚历山德罗夫资料卡占位图', 'Alexander Alexandrov dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'alexander-alexandrov.webp',
+      altZh: 'Generated portrait of Alexander Alexandrov',
+      altEn: 'Generated portrait of Alexander Alexandrov',
+    }),
   },
   {
     id: 'dmitri-shostakovich',
@@ -480,7 +561,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['barbarossa', 'stalingrad'],
     linkedPhaseKeys: ['su:1939'],
     sourceIds: ['britannica-russia-music', 'britannica-stalingrad'],
-    portrait: portrait('德米特里·肖斯塔科维奇资料卡占位图', 'Dmitri Shostakovich dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'dmitri-shostakovich.webp',
+      altZh: 'Generated portrait of Dmitri Shostakovich',
+      altEn: 'Generated portrait of Dmitri Shostakovich',
+    }),
   },
   {
     id: 'edith-piaf',
@@ -516,7 +601,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['liberation-paris', 'marshall-broadcast'],
     linkedPhaseKeys: ['fr:1939', 'fr:1945'],
-    portrait: portrait('艾迪特·皮雅芙资料卡占位图', 'Edith Piaf dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'edith-piaf.webp',
+      altZh: 'Generated portrait of Edith Piaf',
+      altEn: 'Generated portrait of Edith Piaf',
+    }),
   },
   {
     id: 'django-reinhardt',
@@ -551,7 +640,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['europe-war', 'liberation-paris'],
     linkedPhaseKeys: ['fr:1931', 'fr:1939', 'fr:1945'],
-    portrait: portrait('姜戈·莱因哈特资料卡占位图', 'Django Reinhardt dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'django-reinhardt.webp',
+      altZh: 'Generated portrait of Django Reinhardt',
+      altEn: 'Generated portrait of Django Reinhardt',
+    }),
   },
   {
     id: 'rina-ketty',
@@ -587,7 +680,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['europe-war'],
     linkedPhaseKeys: ['fr:1931', 'fr:1939'],
     sourceIds: ['gallica-damia', 'britannica-world-war-ii'],
-    portrait: portrait('丽娜·凯蒂资料卡占位图', 'Rina Ketty dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'rina-ketty.webp',
+      altZh: 'Generated portrait of Rina Ketty',
+      altEn: 'Generated portrait of Rina Ketty',
+    }),
   },
   {
     id: 'carlo-buti',
@@ -622,7 +719,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['rome-berlin-axis', 'europe-war'],
     linkedPhaseKeys: ['it:1931', 'it:1939'],
-    portrait: portrait('卡洛·布蒂资料卡占位图', 'Carlo Buti dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'carlo-buti.webp',
+      altZh: 'Generated portrait of Carlo Buti',
+      altEn: 'Generated portrait of Carlo Buti',
+    }),
   },
   {
     id: 'nilla-pizzi',
@@ -657,7 +758,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['marshall-broadcast'],
     linkedPhaseKeys: ['it:1946'],
-    portrait: portrait('尼拉·皮齐资料卡占位图', 'Nilla Pizzi dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'nilla-pizzi.webp',
+      altZh: 'Generated portrait of Nilla Pizzi',
+      altEn: 'Generated portrait of Nilla Pizzi',
+    }),
   },
   {
     id: 'lina-termini',
@@ -693,7 +798,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['europe-war', 'germany-surrender'],
     linkedPhaseKeys: ['it:1939'],
     sourceIds: ['italy-music-britannica', 'britannica-world-war-ii'],
-    portrait: portrait('莉娜·特米尼资料卡占位图', 'Lina Termini dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'lina-termini.webp',
+      altZh: 'Generated portrait of Lina Termini',
+      altEn: 'Generated portrait of Lina Termini',
+    }),
   },
   {
     id: 'noriko-awaya',
@@ -728,7 +837,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['mukden-incident', 'second-sino-japanese-war'],
     linkedPhaseKeys: ['jp:1931', 'jp:1938'],
-    portrait: portrait('淡谷纪子资料卡占位图', 'Noriko Awaya dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'noriko-awaya.webp',
+      altZh: 'Generated portrait of Noriko Awaya',
+      altEn: 'Generated portrait of Noriko Awaya',
+    }),
   },
   {
     id: 'shizuko-kasagi',
@@ -763,7 +876,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['japan-surrender'],
     linkedPhaseKeys: ['jp:1946'],
-    portrait: portrait('笠置静子资料卡占位图', 'Shizuko Kasagi dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'shizuko-kasagi.webp',
+      altZh: 'Generated portrait of Shizuko Kasagi',
+      altEn: 'Generated portrait of Shizuko Kasagi',
+    }),
   },
   {
     id: 'ichiro-fujiyama',
@@ -799,7 +916,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['mukden-incident', 'second-sino-japanese-war', 'japan-surrender'],
     linkedPhaseKeys: ['jp:1931', 'jp:1938'],
     sourceIds: ['japan-war-song-study'],
-    portrait: portrait('藤山一郎资料卡占位图', 'Ichiro Fujiyama dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'ichiro-fujiyama.webp',
+      altZh: 'Generated portrait of Ichiro Fujiyama',
+      altEn: 'Generated portrait of Ichiro Fujiyama',
+    }),
   },
   {
     id: 'zhou-xuan',
@@ -835,7 +956,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['mukden-incident', 'second-sino-japanese-war'],
     linkedPhaseKeys: ['cn:1931', 'cn:1946'],
-    portrait: portrait('周璇资料卡占位图', 'Zhou Xuan dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'zhou-xuan.webp',
+      altZh: 'Generated portrait of Zhou Xuan',
+      altEn: 'Generated portrait of Zhou Xuan',
+    }),
   },
   {
     id: 'xian-xinghai',
@@ -870,7 +995,11 @@ export const artistMarkers: ArtistMarker[] = [
     ],
     linkedEventIds: ['second-sino-japanese-war', 'prc-founding'],
     linkedPhaseKeys: ['cn:1937', 'cn:1946'],
-    portrait: portrait('冼星海资料卡占位图', 'Xian Xinghai dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'xian-xinghai.webp',
+      altZh: 'Generated portrait of Xian Xinghai',
+      altEn: 'Generated portrait of Xian Xinghai',
+    }),
   },
   {
     id: 'nie-er',
@@ -906,7 +1035,11 @@ export const artistMarkers: ArtistMarker[] = [
     linkedEventIds: ['mukden-incident', 'second-sino-japanese-war', 'prc-founding'],
     linkedPhaseKeys: ['cn:1931', 'cn:1937'],
     sourceIds: ['china-resistance-songs'],
-    portrait: portrait('聂耳资料卡占位图', 'Nie Er dossier placeholder'),
+    portrait: generatedPortrait({
+      fileName: 'nie-er.webp',
+      altZh: 'Generated portrait of Nie Er',
+      altEn: 'Generated portrait of Nie Er',
+    }),
   },
 ]
 
