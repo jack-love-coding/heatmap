@@ -64,9 +64,13 @@ function pseudoNoise(x: number, y: number) {
   return value - Math.floor(value)
 }
 
+function clampChannel(value: number) {
+  return Math.max(0, Math.min(255, value))
+}
+
 function drawGraticule(context: CanvasRenderingContext2D, width: number, height: number) {
   context.save()
-  context.strokeStyle = 'rgba(231, 215, 184, 0.045)'
+  context.strokeStyle = 'rgba(241, 221, 181, 0.065)'
   context.lineWidth = 1
 
   for (let lng = -180; lng <= 180; lng += 15) {
@@ -85,12 +89,55 @@ function drawGraticule(context: CanvasRenderingContext2D, width: number, height:
     context.stroke()
   }
 
-  context.strokeStyle = 'rgba(231, 215, 184, 0.08)'
+  context.strokeStyle = 'rgba(241, 221, 181, 0.12)'
   context.lineWidth = 1.4
   context.beginPath()
   context.moveTo(0, height / 2)
   context.lineTo(width, height / 2)
   context.stroke()
+  context.restore()
+}
+
+function drawOceanTexture(context: CanvasRenderingContext2D, width: number, height: number) {
+  const imageData = context.getImageData(0, 0, width, height)
+  const data = imageData.data
+
+  for (let index = 0; index < data.length; index += 4) {
+    const pixel = index / 4
+    const x = pixel % width
+    const y = Math.floor(pixel / width)
+    const latitudeBand = Math.abs(y / height - 0.5)
+    const current = Math.sin(x * 0.017 + Math.sin(y * 0.013) * 2.6) * 5
+    const trench = pseudoNoise(x * 0.035, y * 0.055) * 11
+    const shelf = Math.sin((x + y * 1.7) * 0.006) * 4
+    const depth = latitudeBand * 18 + current + trench + shelf
+
+    data[index] = clampChannel(data[index] - depth * 0.62)
+    data[index + 1] = clampChannel(data[index + 1] - depth * 0.44)
+    data[index + 2] = clampChannel(data[index + 2] + depth * 0.18)
+  }
+
+  context.putImageData(imageData, 0, 0)
+
+  context.save()
+  context.globalCompositeOperation = 'screen'
+  context.strokeStyle = 'rgba(151, 191, 198, 0.055)'
+  context.lineWidth = 1
+
+  for (let row = 0; row < 42; row += 1) {
+    const y = (row / 42) * height
+    context.beginPath()
+    for (let x = 0; x <= width; x += 28) {
+      const wave = Math.sin(x * 0.006 + row * 1.7) * 8 + Math.sin(x * 0.017 + row) * 3
+      if (x === 0) {
+        context.moveTo(x, y + wave)
+      } else {
+        context.lineTo(x, y + wave)
+      }
+    }
+    context.stroke()
+  }
+
   context.restore()
 }
 
@@ -113,6 +160,44 @@ function drawDeterministicGrain(context: CanvasRenderingContext2D, width: number
   context.putImageData(imageData, 0, 0)
 }
 
+function drawLandRelief(context: CanvasRenderingContext2D, geometry: FeatureGeometry, width: number, height: number) {
+  context.save()
+  context.beginPath()
+  drawFeature(context, geometry, width, height)
+  context.closePath()
+  context.clip()
+
+  context.globalCompositeOperation = 'overlay'
+  context.strokeStyle = 'rgba(255, 238, 194, 0.06)'
+  context.lineWidth = 1
+
+  for (let row = 0; row < 36; row += 1) {
+    const y = (row / 36) * height
+    context.beginPath()
+    for (let x = 0; x <= width; x += 34) {
+      const rise = Math.sin(x * 0.009 + row * 1.9) * 10 + Math.sin((x + row * 19) * 0.025) * 2
+      if (x === 0) {
+        context.moveTo(x, y + rise)
+      } else {
+        context.lineTo(x, y + rise)
+      }
+    }
+    context.stroke()
+  }
+
+  context.fillStyle = 'rgba(88, 61, 34, 0.08)'
+  for (let index = 0; index < 38; index += 1) {
+    const x = pseudoNoise(index * 17.3, width) * width
+    const y = pseudoNoise(index * 29.7, height) * height
+    const radius = 14 + pseudoNoise(index, 7) * 54
+    context.beginPath()
+    context.ellipse(x, y, radius * 1.8, radius * 0.42, pseudoNoise(index, 9) * Math.PI, 0, Math.PI * 2)
+    context.fill()
+  }
+
+  context.restore()
+}
+
 function drawFixedGlow(
   context: CanvasRenderingContext2D,
   width: number,
@@ -132,32 +217,39 @@ function drawFixedGlow(
   context.fill()
 }
 
-export function createEarthTexture() {
-  const width = 2048
-  const height = 1024
+function createTextureCanvas(width: number, height: number) {
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
-  const context = canvas.getContext('2d')
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+
+  return { canvas, context }
+}
+
+export function createEarthTexture() {
+  const width = 2048
+  const height = 1024
+  const { canvas, context } = createTextureCanvas(width, height)
 
   if (!context) {
     return ''
   }
 
   const ocean = context.createLinearGradient(0, 0, width, height)
-  ocean.addColorStop(0, '#243948')
-  ocean.addColorStop(0.32, '#102938')
-  ocean.addColorStop(0.68, '#0b1b27')
-  ocean.addColorStop(1, '#050d14')
+  ocean.addColorStop(0, '#314a58')
+  ocean.addColorStop(0.26, '#193140')
+  ocean.addColorStop(0.62, '#0c1f2d')
+  ocean.addColorStop(1, '#06101a')
   context.fillStyle = ocean
   context.fillRect(0, 0, width, height)
 
+  drawOceanTexture(context, width, height)
   drawGraticule(context, width, height)
 
   const land = context.createLinearGradient(0, 0, width, height)
-  land.addColorStop(0, 'rgba(235, 219, 184, 0.34)')
-  land.addColorStop(0.52, 'rgba(201, 176, 133, 0.25)')
-  land.addColorStop(1, 'rgba(149, 122, 82, 0.24)')
+  land.addColorStop(0, 'rgba(240, 226, 190, 0.52)')
+  land.addColorStop(0.48, 'rgba(196, 172, 126, 0.39)')
+  land.addColorStop(1, 'rgba(122, 101, 70, 0.34)')
 
   for (const item of worldFeatures) {
     if (item.properties?.name === 'Antarctica') {
@@ -170,28 +262,81 @@ export function createEarthTexture() {
     context.fillStyle = land
     context.fill()
 
-    context.strokeStyle = 'rgba(255, 242, 214, 0.18)'
-    context.lineWidth = 1.05
+    drawLandRelief(context, item.geometry, width, height)
+
+    context.globalCompositeOperation = 'screen'
+    context.strokeStyle = 'rgba(255, 229, 171, 0.16)'
+    context.lineWidth = 5
     context.stroke()
 
-    context.strokeStyle = 'rgba(48, 36, 24, 0.18)'
-    context.lineWidth = 2.8
+    context.globalCompositeOperation = 'source-over'
+    context.strokeStyle = 'rgba(255, 242, 214, 0.32)'
+    context.lineWidth = 1.2
+    context.stroke()
+
+    context.strokeStyle = 'rgba(35, 24, 16, 0.32)'
+    context.lineWidth = 2.4
     context.stroke()
   }
 
-  drawFixedGlow(context, width, height, -75, 40, 210, 'rgba(212, 162, 75, 0.1)')
-  drawFixedGlow(context, width, height, 15, 50, 240, 'rgba(232, 196, 142, 0.12)')
-  drawFixedGlow(context, width, height, 116, 33, 210, 'rgba(214, 107, 81, 0.1)')
-  drawFixedGlow(context, width, height, 139, 36, 150, 'rgba(115, 168, 215, 0.1)')
+  context.globalCompositeOperation = 'screen'
+  drawFixedGlow(context, width, height, -75, 40, 230, 'rgba(219, 168, 82, 0.13)')
+  drawFixedGlow(context, width, height, 15, 50, 260, 'rgba(238, 201, 145, 0.16)')
+  drawFixedGlow(context, width, height, 116, 33, 230, 'rgba(222, 118, 84, 0.14)')
+  drawFixedGlow(context, width, height, 139, 36, 170, 'rgba(130, 181, 218, 0.14)')
+  context.globalCompositeOperation = 'source-over'
 
   drawDeterministicGrain(context, width, height)
 
   const vignette = context.createRadialGradient(width / 2, height / 2, height * 0.12, width / 2, height / 2, width * 0.72)
-  vignette.addColorStop(0, 'rgba(255, 255, 255, 0.02)')
+  vignette.addColorStop(0, 'rgba(255, 249, 230, 0.06)')
   vignette.addColorStop(0.68, 'rgba(255, 255, 255, 0)')
-  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.22)')
+  vignette.addColorStop(1, 'rgba(0, 0, 0, 0.34)')
   context.fillStyle = vignette
   context.fillRect(0, 0, width, height)
+
+  return canvas.toDataURL('image/png')
+}
+
+export function createEarthBumpTexture() {
+  const width = 1024
+  const height = 512
+  const { canvas, context } = createTextureCanvas(width, height)
+
+  if (!context) {
+    return ''
+  }
+
+  const ocean = context.createLinearGradient(0, 0, width, height)
+  ocean.addColorStop(0, '#242424')
+  ocean.addColorStop(0.5, '#161616')
+  ocean.addColorStop(1, '#0f0f0f')
+  context.fillStyle = ocean
+  context.fillRect(0, 0, width, height)
+
+  for (const item of worldFeatures) {
+    if (item.properties?.name === 'Antarctica') {
+      continue
+    }
+
+    context.beginPath()
+    drawFeature(context, item.geometry, width, height)
+    context.closePath()
+    context.fillStyle = '#8a8a8a'
+    context.fill()
+
+    drawLandRelief(context, item.geometry, width, height)
+
+    context.strokeStyle = '#d0d0d0'
+    context.lineWidth = 2.6
+    context.stroke()
+
+    context.strokeStyle = '#5f5f5f'
+    context.lineWidth = 1
+    context.stroke()
+  }
+
+  drawDeterministicGrain(context, width, height)
 
   return canvas.toDataURL('image/png')
 }

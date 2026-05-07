@@ -7,7 +7,13 @@ import { getArtistName, getArtistNote, getArtistRole, type ArtistWork } from '@/
 import type { CountryProfile, GlobeFocus, HistoricEvent, Language, LayerKey } from '@/data/ww2MusicAtlas'
 import { artistMarkers, getActiveStylePhase, getCountryName, getEventTitle, getStyleName, getVisibleInfluenceArcs, influenceArcs, stylePhases } from '@/lib/atlas'
 import { getEventCategoryConfig, getEventCategoryLabel, type EventCategory } from '@/lib/eventIcons'
-import { createEarthTexture, getFeatureForCountry, getWorldCountryFeatures } from '@/lib/globeGeo'
+import { createEarthBumpTexture, createEarthTexture, getFeatureForCountry, getWorldCountryFeatures } from '@/lib/globeGeo'
+import {
+  buildInfluenceLabels,
+  buildInfluenceRenderArcs,
+  type InfluenceLabelItem,
+  type InfluenceRenderArc,
+} from '@/lib/globeInfluence'
 import { publicAssetPath } from '@/lib/publicAssets'
 import { getStylePaletteLabel, resolveStylePalette } from '@/lib/stylePalette'
 
@@ -33,6 +39,32 @@ interface GlobePin {
   works?: ArtistWork[]
 }
 
+interface InfluenceArrowObject {
+  id: string
+  lat: number
+  lng: number
+  altitude: number
+  bearing: number
+  color: string
+  glow: string
+  size: number
+  tooltip: string
+}
+
+interface InfluenceHitTargetItem {
+  id: string
+  type: 'influence-hit-target'
+  lat: number
+  lng: number
+  altitude: number
+  shortLabel: string
+  reason: string
+  sourceColor: string
+  targetColor: string
+}
+
+type GlobeHtmlElement = GlobePin | InfluenceLabelItem | InfluenceHitTargetItem
+
 const props = defineProps<{
   activeYear: number
   chrome?: 'full' | 'minimal'
@@ -54,6 +86,8 @@ const emit = defineEmits<{
 
 const container = ref<HTMLDivElement | null>(null)
 const fallback = ref(false)
+const activeInfluenceId = ref<string | null>(null)
+const hoveredInfluenceId = ref<string | null>(null)
 const worldFeatures = getWorldCountryFeatures()
 const eventPinSrc = publicAssetPath('/images/generated/ww2-event-pin.png')
 const artistPinSrc = publicAssetPath('/images/generated/ww2-artist-pin.png')
@@ -129,6 +163,54 @@ const globePins = computed<GlobePin[]>(() => {
 
   return [...eventPins, ...artistPins]
 })
+
+const influenceRenderArcs = computed<InfluenceRenderArc[]>(() =>
+  props.enabledLayers.includes('influence')
+    ? buildInfluenceRenderArcs(
+        getVisibleInfluenceArcs(influenceArcs, props.activeYear, props.selectedCountryIds),
+        props.countries,
+        props.language,
+      )
+    : [],
+)
+
+const influenceLabels = computed<InfluenceLabelItem[]>(() =>
+  buildInfluenceLabels(influenceRenderArcs.value, activeInfluenceId.value, hoveredInfluenceId.value),
+)
+
+const influenceHitTargets = computed<InfluenceHitTargetItem[]>(() =>
+  influenceRenderArcs.value.map((arc) => ({
+    id: arc.id,
+    type: 'influence-hit-target',
+    lat: arc.arrowLat,
+    lng: arc.arrowLng,
+    altitude: arc.altitude + 0.075,
+    shortLabel: arc.shortLabel,
+    reason: arc.reason,
+    sourceColor: arc.sourceColor,
+    targetColor: arc.targetColor,
+  })),
+)
+
+const globeHtmlElements = computed<GlobeHtmlElement[]>(() => [
+  ...globePins.value,
+  ...influenceHitTargets.value,
+  ...influenceLabels.value,
+])
+
+const influenceArrowObjects = computed<InfluenceArrowObject[]>(() =>
+  influenceRenderArcs.value.map((arc) => ({
+    id: arc.id,
+    lat: arc.arrowLat,
+    lng: arc.arrowLng,
+    altitude: arc.altitude + 0.018,
+    bearing: arc.arrowBearing,
+    color: arc.targetColor,
+    glow: withAlpha(arc.targetColor, 0.72),
+    size: 4.6 + arc.weight * 3.2,
+    tooltip: arc.tooltip,
+  })),
+)
 
 function supportsWebGl() {
   try {
@@ -238,16 +320,22 @@ function addAtmosphereObjects() {
 
   const scene = globe.scene()
   scene.add(createStarField(520, 2500, 1.7, 0.34, '#f3d9ac'))
-  scene.add(createStarField(280, 3600, 2.6, 0.18, '#9ec7d8'))
-  scene.add(new THREE.AmbientLight('#c9b697', 0.88))
+  scene.add(createStarField(340, 3600, 2.5, 0.22, '#9ec7d8'))
+  scene.add(createStarField(150, 4600, 3.1, 0.12, '#f6ead5'))
+  scene.add(new THREE.AmbientLight('#cfbda1', 0.64))
+  scene.add(new THREE.HemisphereLight('#f7d3a1', '#07121b', 0.46))
 
-  const keyLight = new THREE.DirectionalLight('#f1c38a', 1.28)
-  keyLight.position.set(-260, 160, 220)
+  const keyLight = new THREE.DirectionalLight('#ffd39a', 1.62)
+  keyLight.position.set(-300, 190, 250)
   scene.add(keyLight)
 
-  const fillLight = new THREE.DirectionalLight('#83aeca', 0.58)
-  fillLight.position.set(220, -120, -180)
+  const fillLight = new THREE.DirectionalLight('#7eaec5', 0.72)
+  fillLight.position.set(240, -120, -210)
   scene.add(fillLight)
+
+  const rimLight = new THREE.DirectionalLight('#f6a85f', 0.9)
+  rimLight.position.set(120, 90, -300)
+  scene.add(rimLight)
 
   scene.add(
     new THREE.Mesh(
@@ -257,6 +345,20 @@ function addAtmosphereObjects() {
         side: THREE.BackSide,
         transparent: true,
         opacity: 0.075,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    ),
+  )
+
+  scene.add(
+    new THREE.Mesh(
+      new THREE.SphereGeometry(107.8, 64, 64),
+      new THREE.MeshBasicMaterial({
+        color: '#6fa7bd',
+        side: THREE.BackSide,
+        transparent: true,
+        opacity: 0.045,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
       }),
@@ -275,15 +377,19 @@ function tuneGlobeMaterial() {
   }
 
   if ('shininess' in material) {
-    material.shininess = 5
+    material.shininess = 14
   }
 
   if ('specular' in material) {
-    material.specular = new THREE.Color('#29333a')
+    material.specular = new THREE.Color('#766247')
   }
 
   if ('color' in material) {
-    material.color = new THREE.Color('#d7c8a4')
+    material.color = new THREE.Color('#ead8ad')
+  }
+
+  if ('bumpScale' in material) {
+    material.bumpScale = 4.8
   }
 
   material.needsUpdate = true
@@ -371,27 +477,147 @@ function createMarkerElement(pin: GlobePin) {
 
   return element
 }
+
+function createInfluenceLabelElement(label: InfluenceLabelItem) {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = [
+    'influence-label',
+    label.isPrimary ? 'influence-label--primary' : '',
+    label.isActive ? 'influence-label--active' : '',
+  ].filter(Boolean).join(' ')
+  element.style.setProperty('--source-color', label.sourceColor)
+  element.style.setProperty('--target-color', label.targetColor)
+  element.setAttribute('data-testid', 'influence-label')
+  element.setAttribute('data-influence-id', label.id)
+  element.setAttribute('aria-label', `${label.shortLabel}: ${label.reason}`)
+  element.title = `${label.shortLabel} - ${label.reason}`
+  element.innerHTML = `
+    <span class="influence-label__route">
+      <b>${escapeHtml(label.sourceName)}</b>
+      <i aria-hidden="true">→</i>
+      <b>${escapeHtml(label.targetName)}</b>
+    </span>
+    <span class="influence-label__reason">${escapeHtml(label.reason)}</span>
+  `
+  element.onpointerenter = () => {
+    hoveredInfluenceId.value = label.id
+  }
+  element.onfocus = () => {
+    hoveredInfluenceId.value = label.id
+  }
+  element.onpointerleave = () => {
+    hoveredInfluenceId.value = null
+  }
+  element.onblur = () => {
+    hoveredInfluenceId.value = null
+  }
+  element.onclick = () => {
+    activeInfluenceId.value = activeInfluenceId.value === label.id ? null : label.id
+  }
+
+  return element
+}
+
+function createHtmlElement(item: GlobeHtmlElement) {
+  if (item.type === 'influence-label') {
+    return createInfluenceLabelElement(item)
+  }
+
+  if (item.type === 'influence-hit-target') {
+    return createInfluenceHitTargetElement(item)
+  }
+
+  return createMarkerElement(item)
+}
+
+function createInfluenceHitTargetElement(item: InfluenceHitTargetItem) {
+  const element = document.createElement('button')
+  element.type = 'button'
+  element.className = 'influence-hit-target'
+  element.style.setProperty('--source-color', item.sourceColor)
+  element.style.setProperty('--target-color', item.targetColor)
+  element.setAttribute('data-testid', 'influence-arrow-hit-target')
+  element.setAttribute('data-influence-id', item.id)
+  element.setAttribute('aria-label', `${item.shortLabel}: ${item.reason}`)
+  element.onpointerenter = () => {
+    hoveredInfluenceId.value = item.id
+  }
+  element.onfocus = () => {
+    hoveredInfluenceId.value = item.id
+  }
+  element.onpointerleave = () => {
+    hoveredInfluenceId.value = null
+  }
+  element.onblur = () => {
+    hoveredInfluenceId.value = null
+  }
+  element.onclick = () => {
+    activeInfluenceId.value = activeInfluenceId.value === item.id ? null : item.id
+  }
+
+  return element
+}
+
+function createInfluenceArrowObject(arrow: InfluenceArrowObject) {
+  const group = new THREE.Group()
+  const color = new THREE.Color(arrow.color)
+  const size = arrow.size
+  const cone = new THREE.Mesh(
+    new THREE.ConeGeometry(size * 0.38, size * 1.12, 5, 1),
+    new THREE.MeshStandardMaterial({
+      color,
+      emissive: color,
+      emissiveIntensity: 0.72,
+      roughness: 0.32,
+      metalness: 0.08,
+      transparent: true,
+      opacity: 0.96,
+      depthWrite: false,
+    }),
+  )
+  cone.rotation.x = Math.PI / 2
+  cone.position.z = size * 0.2
+  group.add(cone)
+
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(size * 0.36, size * 0.58, 32),
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.34,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    }),
+  )
+  halo.rotation.x = Math.PI / 2
+  group.add(halo)
+
+  group.userData = { id: arrow.id }
+  return group
+}
+
+function setHoveredInfluence(influenceId: string | null) {
+  hoveredInfluenceId.value = influenceId
+}
+
 function syncGlobe() {
   if (!globe) {
     return
   }
 
-  const arcs = props.enabledLayers.includes('influence')
-    ? getVisibleInfluenceArcs(influenceArcs, props.activeYear, props.selectedCountryIds).map((arc) => {
-        const source = props.countries.find((country) => country.id === arc.sourceCountryId)!
-        const target = props.countries.find((country) => country.id === arc.targetCountryId)!
-        return {
-          startLat: source.lat,
-          startLng: source.lng,
-          endLat: target.lat,
-          endLng: target.lng,
-          color: [withAlpha(source.color, 0.86), withAlpha(target.color, 0.2)],
-          dashLength: 0.36,
-          stroke: 0.35 + arc.weight * 0.82,
-          altitude: 0.07 + arc.weight * 0.045,
-        }
-      })
-    : []
+  const arcs = influenceRenderArcs.value.map((arc) => ({
+    ...arc,
+    color: [
+      withAlpha(arc.sourceColor, 0.98),
+      withAlpha(arc.sourceColor, 0.72),
+      withAlpha(arc.targetColor, 0.34),
+    ],
+    dashLength: 0.16,
+    dashGap: 0.48,
+    stroke: 0.9 + arc.weight * 1.45,
+  }))
 
   globe
     .polygonsData(worldFeatures)
@@ -432,19 +658,33 @@ function syncGlobe() {
       return country ? buildCountryTooltip(country) : ''
     })
     .polygonsTransitionDuration(700)
-    .htmlElementsData(globePins.value)
+    .htmlElementsData(globeHtmlElements.value)
     .htmlLat('lat')
     .htmlLng('lng')
-    .htmlAltitude((pin: GlobePin) => (pin.type === 'event' ? 0.028 : 0.02))
-    .htmlElement((pin: GlobePin) => createMarkerElement(pin))
+    .htmlAltitude((item: GlobeHtmlElement) => (
+      item.type === 'influence-label' || item.type === 'influence-hit-target'
+        ? item.altitude
+        : item.type === 'event'
+          ? 0.028
+          : 0.02
+    ))
+    .htmlElement((item: GlobeHtmlElement) => createHtmlElement(item))
     .arcsData(arcs)
     .arcColor('color')
     .arcDashLength('dashLength')
     .arcStroke('stroke')
     .arcAltitude('altitude')
-    .arcDashGap(1.4)
+    .arcDashGap('dashGap')
     .arcDashInitialGap((arc: { startLat: number; startLng: number }) => deterministicUnit(Math.round((arc.startLat + 90) * 100), Math.round((arc.startLng + 180) * 100)))
-    .arcDashAnimateTime(2000)
+    .arcDashAnimateTime(1250)
+    .arcCircularResolution(8)
+    .objectsData(influenceArrowObjects.value)
+    .objectLat('lat')
+    .objectLng('lng')
+    .objectAltitude('altitude')
+    .objectRotation((arrow: InfluenceArrowObject) => ({ x: 90, z: arrow.bearing }))
+    .objectFacesSurface(true)
+    .objectThreeObject((arrow: InfluenceArrowObject) => createInfluenceArrowObject(arrow))
 }
 
 function focusCamera() {
@@ -464,10 +704,11 @@ onMounted(() => {
 
   globe = new Globe(container.value)
   globe.globeImageUrl(createEarthTexture())
+  globe.bumpImageUrl(createEarthBumpTexture())
   globe.backgroundColor('rgba(0,0,0,0)')
   globe.showAtmosphere(true)
-  globe.atmosphereAltitude(0.2)
-  globe.atmosphereColor('#d6a35d')
+  globe.atmosphereAltitude(0.24)
+  globe.atmosphereColor('#e1a768')
   tuneGlobeMaterial()
   globe.onPolygonClick((feature: Feature) => {
     const country = getCountryForFeature(feature)
@@ -475,6 +716,19 @@ onMounted(() => {
       emit('select-country', country.id)
     }
   })
+  globe.onArcHover((arc: InfluenceRenderArc | null) => {
+    setHoveredInfluence(arc?.id ?? null)
+  })
+  globe.onArcClick((arc: InfluenceRenderArc) => {
+    activeInfluenceId.value = activeInfluenceId.value === arc.id ? null : arc.id
+  })
+  globe.onObjectHover((arrow: InfluenceArrowObject | null) => {
+    setHoveredInfluence(arrow?.id ?? null)
+  })
+  globe.onObjectClick((arrow: InfluenceArrowObject) => {
+    activeInfluenceId.value = activeInfluenceId.value === arrow.id ? null : arrow.id
+  })
+  globe.lineHoverPrecision(5)
 
   const controls = globe.controls()
   controls.autoRotate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -493,7 +747,15 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.activeYear, props.language, props.selectedArtistId, props.selectedCountryIds.join('|'), props.enabledLayers.join('|')],
+  () => [
+    props.activeYear,
+    props.language,
+    props.selectedArtistId,
+    props.selectedCountryIds.join('|'),
+    props.enabledLayers.join('|'),
+    activeInfluenceId.value,
+    hoveredInfluenceId.value,
+  ],
   () => {
     syncGlobe()
   },
@@ -563,11 +825,12 @@ onBeforeUnmount(() => {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at center, transparent 20%, rgba(6, 10, 16, 0.12) 72%, rgba(4, 7, 11, 0.56) 100%),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: auto, 80px 80px, 80px 80px;
-  mask-image: radial-gradient(circle at center, black 34%, transparent 92%);
+    radial-gradient(circle at 50% 46%, transparent 18%, rgba(195, 122, 57, 0.08) 52%, rgba(6, 10, 16, 0.3) 78%, rgba(4, 7, 11, 0.62) 100%),
+    linear-gradient(90deg, rgba(255, 236, 199, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(255, 236, 199, 0.026) 1px, transparent 1px),
+    linear-gradient(115deg, transparent 0 46%, rgba(255, 240, 205, 0.04) 49%, transparent 53%);
+  background-size: auto, 80px 80px, 80px 80px, 100% 100%;
+  mask-image: radial-gradient(circle at center, black 30%, transparent 94%);
 }
 
 .globe-hint {
@@ -661,6 +924,112 @@ onBeforeUnmount(() => {
 :global(.globe-tooltip__copy) {
   margin-top: 0.35rem;
   color: #ecd9be;
+}
+
+:global(.influence-label) {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  gap: 0.24rem;
+  min-width: 9.2rem;
+  max-width: 15rem;
+  padding: 0.46rem 0.58rem 0.5rem;
+  border: 1px solid color-mix(in srgb, var(--target-color) 48%, rgba(255, 239, 205, 0.18));
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--source-color) 22%, transparent), transparent 42%),
+    rgba(8, 13, 18, 0.82);
+  color: #f8ecd8;
+  text-align: left;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  box-shadow:
+    0 12px 34px rgba(0, 0, 0, 0.34),
+    0 0 22px color-mix(in srgb, var(--target-color) 22%, transparent);
+  backdrop-filter: blur(14px);
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+:global(.influence-label::before) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--source-color), var(--target-color));
+}
+
+:global(.influence-label:hover),
+:global(.influence-label:focus-visible),
+:global(.influence-label--active) {
+  border-color: color-mix(in srgb, var(--target-color) 74%, rgba(255, 247, 225, 0.42));
+  transform: translate(-50%, -50%) scale(1.03);
+  box-shadow:
+    0 16px 42px rgba(0, 0, 0, 0.4),
+    0 0 34px color-mix(in srgb, var(--target-color) 36%, transparent);
+}
+
+:global(.influence-label__route) {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.34rem;
+  min-width: 0;
+  color: #fff3d9;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+:global(.influence-label__route b) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:global(.influence-label__route i) {
+  color: color-mix(in srgb, var(--target-color) 76%, #fff);
+  font-style: normal;
+}
+
+:global(.influence-label__reason) {
+  display: -webkit-box;
+  max-height: 0;
+  overflow: hidden;
+  color: rgba(248, 236, 216, 0.72);
+  font-size: 0.62rem;
+  line-height: 1.35;
+  opacity: 0;
+  transition: max-height 180ms ease, opacity 180ms ease;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+:global(.influence-label:hover .influence-label__reason),
+:global(.influence-label:focus-visible .influence-label__reason),
+:global(.influence-label--active .influence-label__reason) {
+  max-height: 5.2rem;
+  opacity: 1;
+}
+
+:global(.influence-hit-target) {
+  position: relative;
+  z-index: 2;
+  width: 3.25rem;
+  height: 3.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--target-color) 12%, transparent);
+  opacity: 0.01;
+  pointer-events: auto;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+}
+
+:global(.influence-hit-target:focus-visible) {
+  opacity: 0.7;
+  outline: 2px solid color-mix(in srgb, var(--target-color) 72%, #fff);
+  outline-offset: 2px;
 }
 
 :global(.globe-pin) {
@@ -1080,11 +1449,31 @@ onBeforeUnmount(() => {
   :global(.globe-pin__label) {
     display: none;
   }
+
+  :global(.influence-label:not(.influence-label--active)) {
+    display: none;
+  }
+
+  :global(.influence-label) {
+    min-width: min(12rem, 72vw);
+    max-width: min(14rem, 78vw);
+    padding: 0.42rem 0.5rem;
+  }
+
+  :global(.influence-label__route) {
+    font-size: 0.64rem;
+  }
+
+  :global(.influence-label__reason) {
+    font-size: 0.6rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   :global(.globe-pin),
-  :global(.globe-pin__label) {
+  :global(.globe-pin__label),
+  :global(.influence-label),
+  :global(.influence-label__reason) {
     transition: none;
   }
 
